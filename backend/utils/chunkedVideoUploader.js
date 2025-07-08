@@ -122,15 +122,28 @@ const uploadChunk = async (videoId, chunkIndex, chunkBuffer) => {
                     });
 
                 if (error) {
+                    console.error(`Supabase storage error for chunk ${chunkIndex}:`, error);
                     throw new Error(`Supabase upload error: ${error.message}`);
+                }
+
+                if (!data || !data.path) {
+                    throw new Error('Invalid response from Supabase storage - no path returned');
                 }
 
                 chunkPath = data.path;
                 uploadSuccess = true;
-                console.log(`✅ Chunk ${chunkIndex} uploaded successfully`);
+                console.log(`✅ Chunk ${chunkIndex} uploaded successfully to path: ${chunkPath}`);
 
             } catch (uploadError) {
                 console.error(`Attempt ${uploadAttempts} failed for chunk ${chunkIndex}:`, uploadError);
+                console.error('Upload error details:', {
+                    errorMessage: uploadError.message,
+                    errorName: uploadError.name,
+                    chunkIndex,
+                    chunkSize: chunkBuffer.length,
+                    bucket: chunkedVideo.bucket,
+                    filename: chunkFilename
+                });
                 
                 if (uploadAttempts < MAX_RETRIES) {
                     // Exponential backoff: wait 2^attempt seconds
@@ -138,7 +151,8 @@ const uploadChunk = async (videoId, chunkIndex, chunkBuffer) => {
                     console.log(`Retrying in ${waitTime}ms...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 } else {
-                    throw uploadError;
+                    // Final attempt failed, provide detailed error
+                    throw new Error(`Failed to upload chunk ${chunkIndex} after ${MAX_RETRIES} attempts. Last error: ${uploadError.message}`);
                 }
             }
         }

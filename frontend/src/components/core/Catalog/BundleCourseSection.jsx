@@ -101,7 +101,7 @@ function BundleCourseSection({ courses }) {
         >
           <FiPackage className="text-yellow-50 text-2xl sm:text-3xl lg:text-4xl mb-2 sm:mb-3" />
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-richblack-5 leading-tight sm:leading-snug text-center w-full">
-            Back End Developer
+            Bundle Course
           </h2>
         </div>
         <p 
@@ -140,31 +140,14 @@ function BundleCourseSection({ courses }) {
                 key={course._id || index}
                 className="w-full"
               >
-                <div 
-                  onClick={() => handleCourseSelect(course)}
-                  className={`relative cursor-pointer ${
-                    selectedCourses.some(c => c._id === course._id) 
-                      ? 'ring-2 ring-yellow-50 ring-offset-2 ring-offset-richblack-900' 
-                      : ''
-                  }`}
-                >
-                  <Course_Card 
-                    course={course} 
-                    Height={"h-[420px]"} 
-                  />
-                  {/* Selection Indicator */}
-                  {selectedCourses.some(c => c._id === course._id) && (
-                    <div className="absolute top-3 right-3 bg-yellow-50 text-richblack-900 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm z-[60] shadow-lg">
-                      ✓
-                    </div>
-                  )}
-                  {/* Selection Overlay */}
-                  <div className="absolute inset-0 bg-yellow-50/10 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-[55]">
-                    <div className="bg-richblack-900/80 text-white px-4 py-2 rounded-lg font-medium">
-                      {selectedCourses.some(c => c._id === course._id) ? 'Selected' : 'Click to Select'}
-                    </div>
-                  </div>
-                </div>
+                <Course_Card 
+                  course={course} 
+                  Height={"h-[420px]"} 
+                  bundleMode={true}
+                  isSelected={selectedCourses.some(c => c._id === course._id)}
+                  onSelect={() => handleCourseSelect(course)}
+                  selectionText="Click to Select"
+                />
               </div>
             ))
           )}

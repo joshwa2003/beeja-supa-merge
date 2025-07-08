@@ -27,6 +27,7 @@ const CHUNKED_UPLOAD_CONFIG = {
 // Allowed file types
 const ALLOWED_FILE_TYPES = {
     IMAGES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+    VIDEOS: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
     DOCUMENTS: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 };
 
@@ -165,31 +166,40 @@ const getFileSizeLimit = (bucketName) => {
  * Get the appropriate bucket for a file type
  */
 const getBucketForFileType = (mimetype, folder = '') => {
+    console.log('🗂️ Determining bucket for:', { mimetype, folder });
+    
     // Check if it's a video
-    if (ALLOWED_FILE_TYPES.VIDEOS.includes(mimetype)) {
+    if (ALLOWED_FILE_TYPES.VIDEOS && ALLOWED_FILE_TYPES.VIDEOS.includes(mimetype)) {
+        console.log('📹 Using VIDEOS bucket');
         return STORAGE_BUCKETS.VIDEOS;
     }
     
     // Check if it's a document
-    if (ALLOWED_FILE_TYPES.DOCUMENTS.includes(mimetype)) {
+    if (ALLOWED_FILE_TYPES.DOCUMENTS && ALLOWED_FILE_TYPES.DOCUMENTS.includes(mimetype)) {
+        console.log('📄 Using DOCUMENTS bucket');
         return STORAGE_BUCKETS.DOCUMENTS;
     }
     
     // Check if it's an image and determine bucket based on folder
-    if (ALLOWED_FILE_TYPES.IMAGES.includes(mimetype)) {
+    if (ALLOWED_FILE_TYPES.IMAGES && ALLOWED_FILE_TYPES.IMAGES.includes(mimetype)) {
         if (folder && folder.includes('profile')) {
+            console.log('👤 Using PROFILES bucket');
             return STORAGE_BUCKETS.PROFILES;
         }
-        if (folder && folder.includes('course')) {
+        if (folder && (folder.includes('course') || folder === 'courses')) {
+            console.log('📚 Using COURSES bucket');
             return STORAGE_BUCKETS.COURSES;
         }
         if (folder && folder.includes('chat')) {
+            console.log('💬 Using CHAT bucket');
             return STORAGE_BUCKETS.CHAT;
         }
+        console.log('🖼️ Using default IMAGES bucket');
         return STORAGE_BUCKETS.IMAGES;
     }
     
     // Default to images bucket
+    console.log('🔄 Using fallback IMAGES bucket');
     return STORAGE_BUCKETS.IMAGES;
 };
 

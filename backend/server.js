@@ -260,25 +260,78 @@ app.get('/', (req, res) => {
     </div>`);
 });
 
+// 404 handler - must come after all routes
+app.use((req, res) => {
+    console.log('404 - Route not found:', req.method, req.url);
+    
+    const isApiRoute = req.url.startsWith('/api/');
+    
+    if (isApiRoute) {
+        // Return JSON for API routes
+        res.status(404).json({
+            success: false,
+            error: 'Route not found',
+            message: `Cannot ${req.method} ${req.url}`,
+            timestamp: new Date().toISOString()
+        });
+    } else {
+        // Return HTML for non-API routes
+        res.status(404).send(`
+            <div>
+                <h1>404 - Page Not Found</h1>
+                <p>The requested page could not be found.</p>
+            </div>
+        `);
+    }
+});
+
 // Error handling middleware for Multer errors and others
 app.use((err, req, res, next) => {
     console.error('Global error handler caught:', err);
+    console.error('Request URL:', req.url);
+    console.error('Request method:', req.method);
+    
+    // Ensure we always return JSON for API routes
+    const isApiRoute = req.url.startsWith('/api/');
     
     if (err.name === 'MulterError') {
         if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ error: 'File size is too large. Maximum limit is 500MB.' });
+            return res.status(400).json({ 
+                success: false,
+                error: 'File size is too large. Maximum limit is 500MB.',
+                code: 'LIMIT_FILE_SIZE'
+            });
         }
-        return res.status(400).json({ error: err.message });
+        return res.status(400).json({ 
+            success: false,
+            error: err.message,
+            code: err.code
+        });
     }
     
     // Only handle errors that haven't been handled by route controllers
     if (!res.headersSent) {
         console.error('Unhandled error:', err);
-        res.status(500).json({ 
-            error: 'An internal server error occurred.',
-            message: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        });
+        
+        if (isApiRoute) {
+            // Always return JSON for API routes
+            res.status(500).json({ 
+                success: false,
+                error: 'An internal server error occurred.',
+                message: err.message,
+                timestamp: new Date().toISOString(),
+                stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            });
+        } else {
+            // For non-API routes, return HTML
+            res.status(500).send(`
+                <div>
+                    <h1>Internal Server Error</h1>
+                    <p>An error occurred while processing your request.</p>
+                    ${process.env.NODE_ENV === 'development' ? `<pre>${err.stack}</pre>` : ''}
+                </div>
+            `);
+        }
     }
 });
 

@@ -19,29 +19,54 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.post('/initialize', auth, upload.single('video'), async (req, res) => {
     try {
+        console.log('=== INITIALIZE CHUNKED UPLOAD REQUEST START ===');
+        console.log('Request method:', req.method);
+        console.log('Request URL:', req.url);
+        console.log('User from auth:', req.user);
+        console.log('File present:', !!req.file);
+        
         if (!req.file) {
+            console.log('❌ No video file provided');
             return res.status(400).json({
                 success: false,
-                message: 'No video file provided'
+                message: 'No video file provided',
+                error: 'MISSING_VIDEO_FILE'
             });
         }
 
         const { folder = 'videos' } = req.body;
         
+        console.log('📤 Initializing chunked upload:', {
+            filename: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            folder
+        });
+        
         const result = await initializeChunkedUpload(req.file, folder);
         
+        console.log('✅ Chunked upload initialized successfully:', result);
         res.status(200).json({
             success: true,
             data: result,
             message: 'Chunked upload initialized successfully'
         });
     } catch (error) {
-        console.error('Error initializing chunked upload:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message,
-            error: 'Failed to initialize chunked upload'
-        });
+        console.error('❌ Error initializing chunked upload:', error);
+        console.error('Error stack:', error.stack);
+        
+        // Ensure we always return JSON, never HTML
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to initialize chunked upload',
+                error: 'INITIALIZATION_FAILED',
+                details: {
+                    errorType: error.name,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
     }
 });
 
@@ -51,36 +76,64 @@ router.post('/initialize', auth, upload.single('video'), async (req, res) => {
  */
 router.post('/chunk', auth, upload.single('chunk'), async (req, res) => {
     try {
+        console.log('=== CHUNK UPLOAD REQUEST START ===');
+        console.log('Request method:', req.method);
+        console.log('Request URL:', req.url);
+        console.log('Request headers:', req.headers);
+        console.log('Request body:', req.body);
+        console.log('File present:', !!req.file);
+        console.log('User from auth:', req.user);
+
         const { videoId, chunkIndex } = req.body;
         
         if (!req.file) {
+            console.log('❌ No chunk data provided');
             return res.status(400).json({
                 success: false,
-                message: 'No chunk data provided'
+                message: 'No chunk data provided',
+                error: 'MISSING_CHUNK_DATA'
             });
         }
 
         if (!videoId || chunkIndex === undefined) {
+            console.log('❌ Missing required parameters:', { videoId, chunkIndex });
             return res.status(400).json({
                 success: false,
-                message: 'videoId and chunkIndex are required'
+                message: 'videoId and chunkIndex are required',
+                error: 'MISSING_PARAMETERS'
             });
         }
 
+        console.log('📤 Processing chunk upload:', {
+            videoId,
+            chunkIndex: parseInt(chunkIndex),
+            chunkSize: req.file.buffer.length
+        });
+
         const result = await uploadChunk(videoId, parseInt(chunkIndex), req.file.buffer);
         
+        console.log('✅ Chunk upload successful:', result);
         res.status(200).json({
             success: true,
             data: result,
             message: `Chunk ${chunkIndex} uploaded successfully`
         });
     } catch (error) {
-        console.error('Error uploading chunk:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message,
-            error: 'Failed to upload chunk'
-        });
+        console.error('❌ Error uploading chunk:', error);
+        console.error('Error stack:', error.stack);
+        
+        // Ensure we always return JSON, never HTML
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to upload chunk',
+                error: 'CHUNK_UPLOAD_FAILED',
+                details: {
+                    errorType: error.name,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
     }
 });
 
@@ -90,29 +143,48 @@ router.post('/chunk', auth, upload.single('chunk'), async (req, res) => {
  */
 router.post('/complete', auth, async (req, res) => {
     try {
+        console.log('=== COMPLETE CHUNKED UPLOAD REQUEST START ===');
+        console.log('Request method:', req.method);
+        console.log('Request URL:', req.url);
+        console.log('Request body:', req.body);
+        console.log('User from auth:', req.user);
+
         const { videoId } = req.body;
         
         if (!videoId) {
+            console.log('❌ videoId is required');
             return res.status(400).json({
                 success: false,
-                message: 'videoId is required'
+                message: 'videoId is required',
+                error: 'MISSING_VIDEO_ID'
             });
         }
 
+        console.log('🎯 Completing chunked upload for videoId:', videoId);
         const result = await completeChunkedUpload(videoId);
         
+        console.log('✅ Chunked upload completed successfully:', result);
         res.status(200).json({
             success: true,
             data: result,
             message: 'Chunked upload completed successfully'
         });
     } catch (error) {
-        console.error('Error completing chunked upload:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message,
-            error: 'Failed to complete chunked upload'
-        });
+        console.error('❌ Error completing chunked upload:', error);
+        console.error('Error stack:', error.stack);
+        
+        // Ensure we always return JSON, never HTML
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Failed to complete chunked upload',
+                error: 'COMPLETION_FAILED',
+                details: {
+                    errorType: error.name,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
     }
 });
 

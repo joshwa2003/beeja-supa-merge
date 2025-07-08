@@ -225,18 +225,42 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
  * Upload image to Supabase (replaces uploadImageToCloudinary)
  */
 const uploadImageToSupabase = async (file, folder, height, quality) => {
-    const options = {};
-    
-    if (height) {
-        options.maxHeight = height;
-        options.maxWidth = height; // Maintain aspect ratio
-    }
-    
-    if (quality) {
-        options.quality = quality;
-    }
+    try {
+        console.log('🖼️ uploadImageToSupabase called with:', {
+            originalname: file?.originalname,
+            mimetype: file?.mimetype,
+            size: file?.size,
+            folder,
+            height,
+            quality
+        });
 
-    return uploadFileToSupabase(file, folder, options);
+        if (!file) {
+            throw new Error('No file provided for upload');
+        }
+
+        if (!file.buffer || !Buffer.isBuffer(file.buffer)) {
+            throw new Error('Invalid file buffer provided');
+        }
+
+        const options = {};
+        
+        if (height) {
+            options.maxHeight = height;
+            options.maxWidth = height; // Maintain aspect ratio
+        }
+        
+        if (quality) {
+            options.quality = quality;
+        }
+
+        const result = await uploadFileToSupabase(file, folder, options);
+        console.log('✅ uploadImageToSupabase completed successfully');
+        return result;
+    } catch (error) {
+        console.error('❌ uploadImageToSupabase failed:', error);
+        throw new Error(`Image upload failed: ${error.message}`);
+    }
 };
 
 /**

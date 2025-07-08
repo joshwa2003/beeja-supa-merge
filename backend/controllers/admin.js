@@ -344,19 +344,25 @@ exports.deleteUser = async (req, res) => {
 // ================ GET ALL COURSES ================
 exports.getAllCourses = async (req, res) => {
     try {
-        console.log('Fetching all courses with populated category...');
-        const courses = await Course.find({})
+        console.log('Fetching all active courses with populated category...');
+        // Filter out courses that are deactivated (moved to recycle bin)
+        const courses = await Course.find({
+            $or: [
+                { isDeactivated: { $exists: false } },
+                { isDeactivated: false }
+            ]
+        })
             .populate('instructor', 'firstName lastName email')
             .populate('category', 'name _id')
             .sort({ createdAt: -1 });
 
-        console.log('Courses fetched:', courses.length);
+        console.log('Active courses fetched:', courses.length);
         console.log('Sample course category:', courses[0]?.category);
 
         return res.status(200).json({
             success: true,
             courses,
-            message: 'Courses fetched successfully'
+            message: 'Active courses fetched successfully'
         });
     } catch (error) {
         console.error('Error fetching courses:', error);
@@ -371,22 +377,27 @@ exports.getAllCourses = async (req, res) => {
 // ================ GET COURSES FOR TYPE MANAGEMENT (OPTIMIZED) ================
 exports.getCoursesForTypeManagement = async (req, res) => {
     try {
-        console.log('Fetching courses for type management (optimized)...');
+        console.log('Fetching active courses for type management (optimized)...');
         
-        // Only fetch essential fields for course type management
-        const courses = await Course.find({})
+        // Only fetch essential fields for course type management, excluding deactivated courses
+        const courses = await Course.find({
+            $or: [
+                { isDeactivated: { $exists: false } },
+                { isDeactivated: false }
+            ]
+        })
             .select('courseName thumbnail price originalPrice courseType adminSetFree createdAt instructor category')
             .populate('instructor', 'firstName lastName email image')
             .populate('category', 'name')
             .sort({ createdAt: -1 })
             .lean(); // Use lean() for better performance
 
-        console.log('Courses fetched for type management:', courses.length);
+        console.log('Active courses fetched for type management:', courses.length);
 
         return res.status(200).json({
             success: true,
             courses,
-            message: 'Courses fetched successfully for type management'
+            message: 'Active courses fetched successfully for type management'
         });
     } catch (error) {
         console.error('Error fetching courses for type management:', error);
@@ -1179,8 +1190,8 @@ exports.createCourseAsAdmin = async (req, res) => {
             instructions
         } = req.body;
 
-        // Get the thumbnail image from the request - fix variable mismatch
-        const thumbnailFile = req.files?.thumbnailImage?.[0];
+        // Get the thumbnail image from the request - fix variable naming
+        const thumbnailImage = req.files?.thumbnailImage?.[0];
 
         console.log('Extracted data:', {
             courseName,
@@ -1192,67 +1203,123 @@ exports.createCourseAsAdmin = async (req, res) => {
             status,
             tag,
             instructions,
-            thumbnailFile: thumbnailFile ? 'File present' : 'No file'
+            thumbnailImage: thumbnailImage ? 'File present' : 'No file'
         });
 
-        // Validation
-        if (!courseName || !courseDescription || !price || !category || 
-            !whatYouWillLearn || !instructorId || !status || !thumbnailFile) {
+        // Enhanced validation with better error messages
+        const missingFields = [];
+        if (!courseName) missingFields.push('courseName');
+        if (!courseDescription) missingFields.push('courseDescription');
+        if (!price) missingFields.push('price');
+        if (!category) missingFields.push('category');
+        if (!whatYouWillLearn) missingFields.push('whatYouWillLearn');
+        if (!instructorId) missingFields.push('instructorId');
+        if (!status) missingFields.push('status');
+        if (!thumbnailImage) missingFields.push('thumbnailImage');
+
+        if (missingFields.length > 0) {
+            console.log('Validation failed - missing fields:', missingFields);
             return res.status(400).json({
                 success: false,
-                message: 'All required fields must be provided',
-                missingFields: {
-                    courseName: !courseName,
-                    courseDescription: !courseDescription,
-                    price: !price,
-                    category: !category,
-                    whatYouWillLearn: !whatYouWillLearn,
-                    instructorId: !instructorId,
-                    status: !status,
-                    thumbnailFile: !thumbnailFile
-                }
+                message: `Missing required fields: ${missingFields.join(', ')}`,
+                missingFields: missingFields
             });
         }
 
-        // Verify instructor exists
+        // Validate file type and size
+        if (thumbnailImage) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(thumbnailImage.mimetype)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'
+                });
+            }
+
+            // Check file size (10MB limit)
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (thumbnailImage.size > maxSize) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'File size too large. Maximum size allowed is 10MB.'
+                });
+            }
+        }
+
+        // Verify instructor exists and is valid
+        console.log('Verifying instructor:', instructorId);
         const instructor = await User.findById(instructorId);
-        if (!instructor || instructor.accountType !== 'Instructor') {
+        if (!instructor) {
+            console.log('Instructor not found:', instructorId);
             return res.status(400).json({
                 success: false,
-                message: 'Invalid instructor ID'
+                message: 'Instructor not found'
+            });
+        }
+        
+        if (instructor.accountType !== 'Instructor') {
+            console.log('Invalid instructor account type:', instructor.accountType);
+            return res.status(400).json({
+                success: false,
+                message: 'Selected user is not an instructor'
             });
         }
 
         // Verify category exists
+        console.log('Verifying category:', category);
         const Category = require('../models/category');
         const categoryDetails = await Category.findById(category);
         if (!categoryDetails) {
+            console.log('Category not found:', category);
             return res.status(400).json({
                 success: false,
                 message: 'Invalid category ID'
             });
         }
 
-        // Upload thumbnail to Supabase
-        const { uploadImageToSupabase } = require('../utils/supabaseUploader');
-        console.log('Uploading thumbnail to Supabase...');
-        
-        const thumbnailImage = await uploadImageToSupabase(
-            thumbnailFile,
-            'courses'
-        );
-        console.log('Thumbnail uploaded successfully:', thumbnailImage.secure_url);
+        // Upload thumbnail to Supabase with enhanced error handling
+        let thumbnailUrl;
+        try {
+            const { uploadImageToSupabase } = require('../utils/supabaseUploader');
+            console.log('Uploading thumbnail to Supabase...');
+            
+            const uploadResult = await uploadImageToSupabase(
+                thumbnailImage,
+                'courses'
+            );
+            
+            thumbnailUrl = uploadResult.secure_url;
+            console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+        } catch (uploadError) {
+            console.error('Supabase upload error:', uploadError);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to upload thumbnail image',
+                error: uploadError.message
+            });
+        }
 
-        // Parse JSON fields
+        // Parse JSON fields with better error handling
         let parsedTags = [];
         let parsedInstructions = [];
 
         try {
             parsedTags = tag ? JSON.parse(tag) : [];
-            parsedInstructions = instructions ? JSON.parse(instructions) : [];
+            if (!Array.isArray(parsedTags)) {
+                parsedTags = [];
+            }
         } catch (parseError) {
-            console.error('Error parsing JSON fields:', parseError);
+            console.error('Error parsing tags:', parseError);
             parsedTags = [];
+        }
+
+        try {
+            parsedInstructions = instructions ? JSON.parse(instructions) : [];
+            if (!Array.isArray(parsedInstructions)) {
+                parsedInstructions = [];
+            }
+        } catch (parseError) {
+            console.error('Error parsing instructions:', parseError);
             parsedInstructions = [];
         }
 
@@ -1261,16 +1328,26 @@ exports.createCourseAsAdmin = async (req, res) => {
             parsedInstructions
         });
 
-        // Create new course
+        // Validate and convert price
+        const coursePrice = Number(price);
+        if (isNaN(coursePrice) || coursePrice < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid price. Price must be a valid number.'
+            });
+        }
+
+        // Create new course with enhanced data validation
+        console.log('Creating course in database...');
         const newCourse = await Course.create({
-            courseName,
-            courseDescription,
+            courseName: courseName.trim(),
+            courseDescription: courseDescription.trim(),
             instructor: instructorId,
-            whatYouWillLearn,
-            price: Number(price),
+            whatYouWillLearn: whatYouWillLearn.trim(),
+            price: coursePrice,
             tag: parsedTags,
             category,
-            thumbnail: thumbnailImage.secure_url,
+            thumbnail: thumbnailUrl,
             status,
             instructions: parsedInstructions,
             createdAt: new Date(),
@@ -1279,25 +1356,37 @@ exports.createCourseAsAdmin = async (req, res) => {
         console.log('Course created successfully:', newCourse._id);
 
         // Add course to instructor's courses
-        await User.findByIdAndUpdate(
-            instructorId,
-            { $push: { courses: newCourse._id } },
-            { new: true }
-        );
+        try {
+            await User.findByIdAndUpdate(
+                instructorId,
+                { $push: { courses: newCourse._id } },
+                { new: true }
+            );
+            console.log('Course added to instructor profile');
+        } catch (updateError) {
+            console.error('Error updating instructor profile:', updateError);
+            // Continue execution as this is not critical
+        }
 
         // Add course to category
-        await Category.findByIdAndUpdate(
-            category,
-            { $push: { courses: newCourse._id } },
-            { new: true }
-        );
+        try {
+            await Category.findByIdAndUpdate(
+                category,
+                { $push: { courses: newCourse._id } },
+                { new: true }
+            );
+            console.log('Course added to category');
+        } catch (updateError) {
+            console.error('Error updating category:', updateError);
+            // Continue execution as this is not critical
+        }
 
         // Populate the course with instructor and category details
         const populatedCourse = await Course.findById(newCourse._id)
             .populate('instructor', 'firstName lastName email')
             .populate('category', 'name description');
 
-        // Send notifications
+        // Send notifications with error handling
         try {
             // Always create notification for admins about new course creation
             await createNewCourseCreationNotification(newCourse._id, instructorId);
@@ -1326,15 +1415,15 @@ exports.createCourseAsAdmin = async (req, res) => {
             message: error.message,
             stack: error.stack,
             name: error.name,
-            fullError: error
+            code: error.code
         });
         
-        // Handle specific errors
+        // Handle specific MongoDB errors
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({
                 success: false,
-                message: 'Validation error',
+                message: 'Course validation failed',
                 errors: validationErrors
             });
         }
@@ -1342,15 +1431,23 @@ exports.createCourseAsAdmin = async (req, res) => {
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid ID format',
+                message: 'Invalid ID format provided',
                 error: error.message
             });
         }
 
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course with this name already exists'
+            });
+        }
+
+        // Generic server error
         res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: 'Internal server error while creating course',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
         });
     }
 };
