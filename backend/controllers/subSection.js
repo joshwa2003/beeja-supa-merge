@@ -60,9 +60,18 @@ exports.updateSubSection = async (req, res) => {
                     console.log('Video duration (update):', uploadDetails.duration);
                     console.log('Upload method:', uploadDetails.size > 25 * 1024 * 1024 ? 'Chunked Upload' : 'Direct Upload');
                     subSection.videoUrl = uploadDetails.secure_url;
-                    subSection.timeDuration = uploadDetails.duration || 0;
+                    
+                    // Ensure duration is properly set
+                    const duration = uploadDetails.duration || 0;
+                    subSection.timeDuration = duration;
+                    
                     console.log('Video uploaded successfully:', uploadDetails.secure_url);
                     console.log('Setting timeDuration to (update):', subSection.timeDuration);
+                    
+                    // Validate that duration was set
+                    if (duration === 0) {
+                        console.warn('⚠️ Video duration is 0 - this may cause course duration calculation issues');
+                    }
                 } catch (uploadError) {
                     // Clear the timeout as upload failed
                     clearTimeout(uploadTimeout);
@@ -242,6 +251,11 @@ exports.createSubSection = async (req, res) => {
                     timeDuration = videoFileDetails.duration || 0;
                     
                     console.log('Setting timeDuration to:', timeDuration);
+                    
+                    // Validate that duration was set
+                    if (timeDuration === 0) {
+                        console.warn('⚠️ Video duration is 0 - this may cause course duration calculation issues');
+                    }
                 } catch (uploadError) {
                     // Clear the timeout as upload failed
                     clearTimeout(uploadTimeout);

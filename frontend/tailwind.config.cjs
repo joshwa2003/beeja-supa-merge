@@ -214,6 +214,17 @@ module.exports = {
         maxContentTab: "650px"
       },
     },
+    extend: {
+      colors: {
+        orange: {
+          400: "#F97316",
+          500: "#EA580C"
+        },
+        indigo: {
+          400: "#7f9cf5"
+        }
+      }
+    }
   },
   plugins: [
     require('tailwind-scrollbar')({ nocompatible: true }),

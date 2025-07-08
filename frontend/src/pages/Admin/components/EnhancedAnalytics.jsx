@@ -1033,7 +1033,7 @@ const EnhancedAnalytics = () => {
             <FaPlus className="text-green-400" />
             Recently Added Courses
           </h3>
-          <span className="text-sm text-gray-400">Last 7 days</span>
+          <span className="text-sm text-pure-greys-50">Last 7 days</span>
         </div>
         <div className="space-y-4">
           {analytics.recentCourses?.slice(0, 5).map((course, index) => (
@@ -1044,10 +1044,10 @@ const EnhancedAnalytics = () => {
                 </div>
                 <div>
                   <h4 className="text-white font-medium">{course.courseName || course.title}</h4>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-pure-greys-50">
                     by {course.instructor?.firstName} {course.instructor?.lastName || course.instructor}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-pure-greys-50">
                     {new Date(course.createdAt).toLocaleDateString()} • 
                     {course.category?.name && ` ${course.category.name} • `}
                     ₹{course.price || 0}
@@ -1067,9 +1067,9 @@ const EnhancedAnalytics = () => {
           ))}
           {(!analytics.recentCourses || analytics.recentCourses.length === 0) && (
             <div className="text-center py-8">
-              <FaBookOpen className="text-gray-500 text-3xl mx-auto mb-3" />
-              <p className="text-gray-400">No recent courses found</p>
-              <p className="text-gray-500 text-sm">Courses added in the last 7 days will appear here</p>
+              <FaBookOpen className="text-pure-greys-50 text-3xl mx-auto mb-3" />
+              <p className="text-pure-greys-50">No recent courses found</p>
+              <p className="text-pure-greys-50 text-sm">Courses added in the last 7 days will appear here</p>
             </div>
           )}
         </div>
@@ -1082,7 +1082,7 @@ const EnhancedAnalytics = () => {
             <FaSignInAlt className="text-blue-400 text-sm sm:text-base" />
             Recent Logins
           </h3>
-          <span className="text-xs sm:text-sm text-gray-400">Last 24 hours</span>
+          <span className="text-xs sm:text-sm text-pure-greys-50">Last 24 hours</span>
         </div>
         <div className="space-y-3 sm:space-y-4">
           {analytics.recentLogins?.slice(0, 5).map((login, index) => (
@@ -1100,8 +1100,8 @@ const EnhancedAnalytics = () => {
                   <h4 className="text-sm sm:text-base text-white font-medium truncate">
                     {login.firstName && login.lastName ? `${login.firstName} ${login.lastName}` : login.user}
                   </h4>
-                  <p className="text-xs sm:text-sm text-gray-400 truncate">{login.email}</p>
-                  <p className="text-xs text-gray-500 sm:hidden">
+                  <p className="text-xs sm:text-sm text-pure-greys-50 truncate">{login.email}</p>
+                  <p className="text-xs text-pure-greys-50 sm:hidden">
                     {new Date(login.createdAt || login.loginTime).toLocaleDateString()} • {login.accountType || login.role}
                   </p>
                 </div>
@@ -1110,7 +1110,7 @@ const EnhancedAnalytics = () => {
                 <p className="text-sm text-white">
                   {new Date(login.createdAt || login.loginTime).toLocaleTimeString()}
                 </p>
-                <p className="text-xs text-gray-400">{login.accountType || login.role}</p>
+                <p className="text-xs text-pure-greys-50">{login.accountType || login.role}</p>
               </div>
               <div className="text-right sm:hidden flex-shrink-0">
                 <p className="text-xs text-white">
@@ -1121,9 +1121,9 @@ const EnhancedAnalytics = () => {
           ))}
           {(!analytics.recentLogins || analytics.recentLogins.length === 0) && (
             <div className="text-center py-6 sm:py-8">
-              <FaSignInAlt className="text-gray-500 text-2xl sm:text-3xl mx-auto mb-2 sm:mb-3" />
-              <p className="text-sm sm:text-base text-gray-400">No recent activity found</p>
-              <p className="text-xs sm:text-sm text-gray-500">Recent user registrations will appear here</p>
+              <FaSignInAlt className="text-pure-greys-5 text-2xl sm:text-3xl mx-auto mb-2 sm:mb-3" />
+              <p className="text-sm sm:text-base text-pure-greys-5">No recent activity found</p>
+              <p className="text-xs sm:text-sm text-pure-greys-5">Recent user registrations will appear here</p>
             </div>
           )}
         </div>
@@ -1139,7 +1139,7 @@ const EnhancedAnalytics = () => {
           </h3>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-pure-greys-50">
               Last updated: {systemHealth.api.lastChecked ? 
                 new Date(systemHealth.api.lastChecked).toLocaleTimeString() : 'Never'}
             </span>
@@ -1170,7 +1170,7 @@ const EnhancedAnalytics = () => {
               }`}>
                 {systemHealth.api.status}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-pure-greys-50">
                 {systemHealth.api.responseTime}ms
               </p>
             </div>
@@ -1191,7 +1191,7 @@ const EnhancedAnalytics = () => {
               }`}>
                 {systemHealth.database.status}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-pure-greys-50">
                 {systemHealth.database.responseTime}ms
               </p>
             </div>
@@ -1220,7 +1220,7 @@ const EnhancedAnalytics = () => {
               }`}>
                 {systemHealth.serverLoad.status}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-pure-greys-50">
                 CPU: {systemHealth.serverLoad.cpuUsage}% | RAM: {systemHealth.serverLoad.memoryUsage}%
               </p>
             </div>
@@ -1245,11 +1245,11 @@ const EnhancedAnalytics = () => {
                 systemHealth.cache.status === 'optimized' ? 'text-purple-400' :
                 systemHealth.cache.status === 'fair' ? 'text-yellow-400' :
                 systemHealth.cache.status === 'poor' ? 'text-red-400' :
-                'text-gray-400'
+                'text-pure-greys-50'
               }`}>
                 {systemHealth.cache.status}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-pure-greys-50">
                 Hit rate: {systemHealth.cache.hitRate}%
               </p>
             </div>
@@ -1258,7 +1258,7 @@ const EnhancedAnalytics = () => {
 
         {/* System Health Details */}
         <div className="mt-4 p-4 bg-[#2F2F2F] rounded-lg">
-          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+          <div className="flex flex-wrap gap-4 text-xs text-pure-greys-50">
             <span>API Response: {systemHealth.api.responseTime}ms</span>
             <span>CPU Usage: {systemHealth.serverLoad.cpuUsage}%</span>
             <span>Memory Usage: {systemHealth.serverLoad.memoryUsage}%</span>

@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const Notification = require('../models/notification');
 const UserNotificationStatus = require('../models/userNotificationStatus');
+const { convertSecondsToDuration } = require('../utils/secToDuration');
 const { 
     createInstructorApprovalNotification,
     createNewCourseCreationNotification,
@@ -354,14 +355,50 @@ exports.getAllCourses = async (req, res) => {
         })
             .populate('instructor', 'firstName lastName email')
             .populate('category', 'name _id')
+            .populate({
+                path: 'courseContent',
+                populate: {
+                    path: 'subSection',
+                    model: 'SubSection',
+                    select: 'timeDuration'
+                }
+            })
             .sort({ createdAt: -1 });
 
         console.log('Active courses fetched:', courses.length);
         console.log('Sample course category:', courses[0]?.category);
 
+        // Calculate total duration for each course
+        const coursesWithDuration = courses.map(course => {
+            let totalDurationInSeconds = 0;
+            
+            // Calculate total duration from all subsections
+            if (course.courseContent && course.courseContent.length > 0) {
+                course.courseContent.forEach(section => {
+                    if (section.subSection && section.subSection.length > 0) {
+                        section.subSection.forEach(subSection => {
+                            if (subSection.timeDuration && !isNaN(subSection.timeDuration)) {
+                                totalDurationInSeconds += subSection.timeDuration;
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Convert to course object and add duration fields
+            const courseObj = course.toObject();
+            courseObj.totalDurationInSeconds = totalDurationInSeconds;
+            courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+            
+            // Remove the populated courseContent to reduce response size
+            delete courseObj.courseContent;
+            
+            return courseObj;
+        });
+
         return res.status(200).json({
             success: true,
-            courses,
+            courses: coursesWithDuration,
             message: 'Active courses fetched successfully'
         });
     } catch (error) {

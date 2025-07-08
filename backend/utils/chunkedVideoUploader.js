@@ -1,5 +1,6 @@
 const { supabaseAdmin } = require('../config/supabaseAdmin');
 const { getBucketForFileType } = require('../config/supabaseStorage');
+const { extractVideoMetadata } = require('./videoMetadata');
 const ChunkedVideo = require('../models/chunkedVideo');
 const path = require('path');
 const crypto = require('crypto');
@@ -424,8 +425,27 @@ const uploadVideoInChunks = async (file, folder = 'videos') => {
 
         console.log('✅ All chunks verified successfully, proceeding to complete upload...');
 
+        // Extract video duration before completing upload
+        let videoDuration = 0;
+        try {
+            console.log('🎬 Extracting video duration from chunked upload...');
+            const videoMetadata = await extractVideoMetadata(file.buffer, {
+                originalname: file.originalname,
+                size: file.size,
+                mimetype: file.mimetype
+            });
+            videoDuration = videoMetadata.duration;
+            console.log(`✅ Video duration extracted: ${videoDuration}s`);
+        } catch (durationError) {
+            console.warn('⚠️ Failed to extract video duration:', durationError.message);
+            videoDuration = 0;
+        }
+
         // Complete the upload (creates manifest, keeps chunks separate)
         const finalResult = await completeChunkedUpload(videoId);
+        
+        // Add duration to the result
+        finalResult.duration = videoDuration;
 
         console.log('🎉 Chunked video upload completed successfully!');
         console.log('📋 Chunks stored separately for Supabase free tier compatibility');

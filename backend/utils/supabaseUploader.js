@@ -2,6 +2,7 @@ const { supabaseAdmin } = require('../config/supabaseAdmin');
 const sharp = require('sharp');
 const { getBucketForFileType, validateFile } = require('../config/supabaseStorage');
 const { uploadVideoInChunks } = require('./chunkedVideoUploader');
+const { extractVideoMetadata } = require('./videoMetadata');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -205,6 +206,25 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
             size: fileBuffer.length,
             original_filename: file.originalname
         };
+
+        // Extract video duration for video files
+        if (file.mimetype.startsWith('video/')) {
+            try {
+                console.log('🎬 Extracting video duration...');
+                const videoMetadata = await extractVideoMetadata(file.buffer, {
+                    originalname: file.originalname,
+                    size: file.size,
+                    mimetype: file.mimetype
+                });
+                
+                result.duration = videoMetadata.duration;
+                result.metadata = videoMetadata;
+                console.log(`✅ Video duration extracted: ${videoMetadata.duration}s`);
+            } catch (durationError) {
+                console.warn('⚠️ Failed to extract video duration:', durationError.message);
+                result.duration = 0; // Default to 0 if extraction fails
+            }
+        }
 
         console.log('✅ Upload successful:', {
             secure_url: result.secure_url,

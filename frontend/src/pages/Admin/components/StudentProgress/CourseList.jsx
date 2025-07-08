@@ -87,7 +87,7 @@ const CourseList = ({ categoryId, onCourseSelect }) => {
                 <div className="flex items-center space-x-4 text-sm">
                   <div className="flex items-center text-richblack-300">
                     <FaGraduationCap className="mr-2" />
-                    <span>{course.totalDuration || '0'} hours</span>
+                    <span>{course.totalDuration || '0s'}</span>
                   </div>
                   <div className="flex items-center text-richblack-300">
                     <FaUsers className="mr-2" />
