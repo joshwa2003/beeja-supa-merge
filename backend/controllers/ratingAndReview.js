@@ -175,3 +175,216 @@ exports.getAllRatingReview = async(req, res)=>{
         })
     }
 }
+
+// ================ Get Selected Reviews Only ================
+exports.getSelectedReviews = async(req, res)=>{
+    try{
+        const selectedReviews = await RatingAndReview.find({ isSelected: true })
+        .sort({rating:'desc'})
+        .populate({
+            path:'user',
+            select:'firstName lastName email image'
+        })
+        .populate({
+            path:'course',
+            select:'courseName'
+        })
+        .exec();
+
+        return res.status(200).json({
+            success:true,
+            data:selectedReviews,
+            message:"Selected reviews fetched successfully"
+        });
+    }
+    catch(error){
+        console.log('Error while fetching selected ratings');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Error while fetching selected ratings',
+        })
+    }
+}
+
+// ================ Admin: Get All Reviews for Management ================
+exports.getAllReviewsForAdmin = async(req, res)=>{
+    try{
+        const allReviews = await RatingAndReview.find({})
+        .sort({createdAt: 'desc'})
+        .populate({
+            path:'user',
+            select:'firstName lastName email image'
+        })
+        .populate({
+            path:'course',
+            select:'courseName'
+        })
+        .exec();
+
+        return res.status(200).json({
+            success:true,
+            data:allReviews,
+            message:"All reviews fetched successfully for admin"
+        });
+    }
+    catch(error){
+        console.log('Error while fetching all ratings for admin');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Error while fetching all ratings for admin',
+        })
+    }
+}
+
+// ================ Admin: Toggle Review Selection ================
+exports.toggleReviewSelection = async(req, res)=>{
+    try{
+        const { reviewId } = req.params;
+
+        if (!reviewId) {
+            return res.status(400).json({
+                success: false,
+                message: "Review ID is required"
+            });
+        }
+
+        const review = await RatingAndReview.findById(reviewId);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: "Review not found"
+            });
+        }
+
+        // Toggle the isSelected field
+        review.isSelected = !review.isSelected;
+        await review.save();
+
+        // Populate the updated review for response
+        const updatedReview = await RatingAndReview.findById(reviewId)
+        .populate({
+            path:'user',
+            select:'firstName lastName email image'
+        })
+        .populate({
+            path:'course',
+            select:'courseName'
+        })
+        .exec();
+
+        return res.status(200).json({
+            success:true,
+            data:updatedReview,
+            message:`Review ${review.isSelected ? 'selected' : 'deselected'} successfully`
+        });
+    }
+    catch(error){
+        console.log('Error while toggling review selection');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Error while toggling review selection',
+        })
+    }
+}
+
+// ================ Admin: Bulk Update Review Selection ================
+exports.bulkUpdateReviewSelection = async(req, res)=>{
+    try{
+        const { reviewIds, isSelected } = req.body;
+
+        if (!reviewIds || !Array.isArray(reviewIds)) {
+            return res.status(400).json({
+                success: false,
+                message: "Review IDs array is required"
+            });
+        }
+
+        if (typeof isSelected !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "isSelected must be a boolean value"
+            });
+        }
+
+        const result = await RatingAndReview.updateMany(
+            { _id: { $in: reviewIds } },
+            { isSelected: isSelected }
+        );
+
+        return res.status(200).json({
+            success:true,
+            data: {
+                modifiedCount: result.modifiedCount,
+                matchedCount: result.matchedCount
+            },
+            message:`${result.modifiedCount} reviews ${isSelected ? 'selected' : 'deselected'} successfully`
+        });
+    }
+    catch(error){
+        console.log('Error while bulk updating review selection');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Error while bulk updating review selection',
+        })
+    }
+}
+
+// ================ Admin: Delete Review ================
+exports.deleteReview = async(req, res)=>{
+    try{
+        const { reviewId } = req.params;
+
+        if (!reviewId) {
+            return res.status(400).json({
+                success: false,
+                message: "Review ID is required"
+            });
+        }
+
+        // Find the review first to get course ID
+        const review = await RatingAndReview.findById(reviewId);
+
+        if (!review) {
+            return res.status(404).json({
+                success: false,
+                message: "Review not found"
+            });
+        }
+
+        // Remove review from course's ratingAndReviews array
+        await Course.findByIdAndUpdate(
+            review.course,
+            {
+                $pull: {
+                    ratingAndReviews: reviewId
+                }
+            }
+        );
+
+        // Delete the review
+        await RatingAndReview.findByIdAndDelete(reviewId);
+
+        return res.status(200).json({
+            success:true,
+            
+        });
+    }
+    catch(error){
+        console.log('Error while deleting review');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Error while deleting review',
+        })
+    }
+}

@@ -57,6 +57,7 @@ export const courseEndpoints = {
 // RATINGS AND REVIEWS
 export const ratingsEndpoints = {
   REVIEWS_DETAILS_API: BASE_URL + "/api/v1/course/getReviews",
+  SELECTED_REVIEWS_API: BASE_URL + "/api/v1/course/getSelectedReviews",
 }
 
 // CATAGORIES API
@@ -138,6 +139,12 @@ export const adminEndpoints = {
   SEND_NOTIFICATION_API: BASE_URL + "/api/v1/admin/notifications/send",
   GET_ALL_NOTIFICATIONS_API: BASE_URL + "/api/v1/admin/notifications",
   DELETE_NOTIFICATION_API: BASE_URL + "/api/v1/admin/notifications/:notificationId",
+
+  // Review Management
+  GET_ALL_REVIEWS_ADMIN_API: BASE_URL + "/api/v1/admin/reviews",
+  TOGGLE_REVIEW_SELECTION_API: BASE_URL + "/api/v1/admin/reviews/:reviewId/toggle-selection",
+  BULK_UPDATE_REVIEW_SELECTION_API: BASE_URL + "/api/v1/admin/reviews/bulk-update-selection",
+  DELETE_REVIEW_API: BASE_URL + "/api/v1/admin/reviews/:reviewId",
 }
 
 // COURSE ACCESS ENDPOINTS

@@ -42,7 +42,6 @@ function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
       if (navigator.share) {
         // Use native sharing on mobile devices
         await navigator.share(shareData)
-        toast.success("Shared successfully")
       } else {
         // Fallback for desktop - copy to clipboard
         copy(window.location.href)

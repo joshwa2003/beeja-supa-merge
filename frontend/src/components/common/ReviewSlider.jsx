@@ -8,6 +8,10 @@ import { Swiper, SwiperSlide } from "swiper/react"
 import "swiper/css"
 import "swiper/css/free-mode"
 import "swiper/css/pagination"
+import "swiper/css/autoplay"
+
+// Import Swiper modules
+import { FreeMode, Autoplay } from "swiper/modules"
 
 // Icons
 import { FaStar } from "react-icons/fa"
@@ -21,59 +25,99 @@ function ReviewSlider() {
 
   useEffect(() => {
     ; (async () => {
-      const { data } = await apiConnector(
-        "GET",
-        ratingsEndpoints.REVIEWS_DETAILS_API
-      )
-      if (data?.success) {
-        setReviews(data?.data)
+      try {
+        // First try to get selected reviews
+        const { data } = await apiConnector(
+          "GET",
+          ratingsEndpoints.SELECTED_REVIEWS_API
+        )
+        
+        if (data?.success && data?.data?.length > 0) {
+          // If we have selected reviews, use them
+          setReviews(data?.data)
+        } else {
+          // Fallback to all reviews if no reviews are selected
+          const fallbackData = await apiConnector(
+            "GET",
+            ratingsEndpoints.REVIEWS_DETAILS_API
+          )
+          if (fallbackData?.data?.success) {
+            setReviews(fallbackData?.data?.data)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching reviews:", error)
+        // Fallback to all reviews on error
+        try {
+          const fallbackData = await apiConnector(
+            "GET",
+            ratingsEndpoints.REVIEWS_DETAILS_API
+          )
+          if (fallbackData?.data?.success) {
+            setReviews(fallbackData?.data?.data)
+          }
+        } catch (fallbackError) {
+          console.error("Error fetching fallback reviews:", fallbackError)
+        }
       }
     })()
   }, [])
 
   if(!reviews) return;
 
+  // Duplicate reviews if we have fewer than 6 for better looping
+  const displayReviews = reviews.length < 6 ? [...reviews, ...reviews, ...reviews] : reviews;
+
   return (
-    <div className="text-white ">
-      <div className="my-[30px] h-[140px] max-w-maxContentTab lg:max-w-maxContent px-2 "  >
+    <div className="text-white w-full overflow-hidden">
+      <div className="my-[30px] h-[140px] max-w-maxContentTab lg:max-w-maxContent mx-auto px-4">
         <Swiper
+          modules={[FreeMode, Autoplay]}
           breakpoints={{
             320: {
-              slidesPerView: 1.2,
-              spaceBetween: 10,
+              slidesPerView: 1.1,
+              spaceBetween: 15,
             },
             480: {
-              slidesPerView: 2.2,
-              spaceBetween: 12,
+              slidesPerView: 2.1,
+              spaceBetween: 15,
             },
             640: {
               slidesPerView: 2.5,
-              spaceBetween: 15,
+              spaceBetween: 18,
             },
             768: {
               slidesPerView: 3.2,
-              spaceBetween: 18,
+              spaceBetween: 20,
             },
             1024: {
-              slidesPerView: 4.5,
-              spaceBetween: 20,
+              slidesPerView: 4.3,
+              spaceBetween: 22,
             },
             1280: {
               slidesPerView: 5.5,
-              spaceBetween: 22,
+              spaceBetween: 25,
             },
           }}
           loop={true}
+          loopAdditionalSlides={3}
           freeMode={true}
           autoplay={{
-            delay: 2500,
+            delay: 3000,
             disableOnInteraction: false,
+            pauseOnMouseEnter: true,
           }}
-          className="w-full"
+          speed={800}
+          className="w-full overflow-hidden"
+          watchOverflow={true}
+          centeredSlides={false}
+          slidesPerGroup={1}
+          allowTouchMove={true}
+          spaceBetween={20}
         >
-          {reviews.map((review, i) => {
+          {displayReviews.map((review, i) => {
             return (
-              <SwiperSlide key={i}>
+              <SwiperSlide key={`${review._id}-${i}`}>
                 <div className="flex flex-col gap-2 bg-gradient-to-br from-blue-900/30 to-purple-900/30 p-3 text-[11px] h-[120px] rounded-lg border border-blue-500/20 hover:border-yellow-50/50 transition-all duration-200 group backdrop-blur-sm">
                   {/* Header with user info */}
                   <div className="flex items-start gap-2">

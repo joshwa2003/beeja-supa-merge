@@ -65,7 +65,6 @@ Don't miss out on this amazing offer! 🚀`;
               text: shareContent,
               url: websiteUrl
             });
-            toast.success('Shared successfully!');
           } else {
             // If Web Share API is not supported, show all sharing options
             const shareData = {
@@ -79,7 +78,6 @@ Don't miss out on this amazing offer! 🚀`;
             shareButton.addEventListener('click', async () => {
               try {
                 await navigator.share(shareData);
-                toast.success('Shared successfully!');
               } catch (error) {
                 if (error.name !== 'AbortError') {
                   // Fallback to clipboard if sharing fails

@@ -328,7 +328,7 @@ const StudentService = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
-              <Link to="/catalog">
+              <Link to="/courses">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}

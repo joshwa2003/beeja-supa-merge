@@ -87,8 +87,10 @@ function Catalog() {
                     <BackgroundEffect />
                 </motion.div>
 
-                {/* Hero Section */}
-                <div className="relative box-content bg-richblack-800 px-4 sm:px-6 lg:px-8 z-10">
+                {/* Main Content above background */}
+                <div className="relative z-10">
+                    {/* Hero Section */}
+                    <div className="relative box-content bg-richblack-800 px-4 sm:px-6 lg:px-8">
                     <div className="mx-auto flex min-h-[180px] sm:min-h-[220px] md:min-h-[240px] lg:min-h-[260px] max-w-maxContentTab flex-col justify-center gap-3 sm:gap-4 lg:max-w-maxContent">
                         <p className="text-xs sm:text-sm md:text-base text-richblack-300">
                             {`Home / Catalog / `}
@@ -102,27 +104,28 @@ function Catalog() {
                         <p className="max-w-[600px] sm:max-w-[700px] lg:max-w-[870px] text-sm sm:text-base md:text-lg lg:text-xl text-richblack-200 leading-relaxed sm:leading-relaxed md:leading-loose">
                             {catalogPageData?.selectedCategory?.description}
                         </p>
+                        </div>
                     </div>
-                </div>
 
-                {/* No Courses Message */}
-                <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
-                    <div className="text-center py-16">
-                        <div className="text-6xl mb-4">📚</div>
-                        <h2 className="text-2xl font-bold text-richblack-5 mb-4">No Courses Available Yet</h2>
-                        <p className="text-richblack-300 mb-6">
-                            Courses for this category are coming soon. Please check back later or explore other categories.
-                        </p>
-                        <button 
-                            onClick={() => window.history.back()} 
-                            className="bg-yellow-50 text-richblack-900 px-6 py-3 rounded-lg font-medium hover:bg-yellow-100 transition-colors"
-                        >
-                            Go Back
-                        </button>
+                    {/* No Courses Message */}
+                    <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
+                        <div className="text-center py-16">
+                            <div className="text-6xl mb-4">📚</div>
+                            <h2 className="text-2xl font-bold text-richblack-5 mb-4">No Courses Available Yet</h2>
+                            <p className="text-richblack-300 mb-6">
+                                Courses for this category are coming soon. Please check back later or explore other categories.
+                            </p>
+                            <button 
+                                onClick={() => window.history.back()} 
+                                className="bg-yellow-50 text-richblack-900 px-6 py-3 rounded-lg font-medium hover:bg-yellow-100 transition-colors"
+                            >
+                                Go Back
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <ImprovedFooter />
+                    <ImprovedFooter />
+                </div>
             </>
         )
     }
@@ -141,8 +144,10 @@ function Catalog() {
                 <BackgroundEffect />
             </motion.div>
 
-            {/* Hero Section */}
-            <div className="relative box-content bg-richblack-800 px-4 sm:px-6 lg:px-8 z-10">
+            {/* Main Content above background */}
+            <div className="relative z-10">
+                {/* Hero Section */}
+                <div className="relative box-content bg-richblack-800 px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto flex min-h-[180px] sm:min-h-[220px] md:min-h-[240px] lg:min-h-[260px] max-w-maxContentTab flex-col justify-center gap-3 sm:gap-4 lg:max-w-maxContent">
                     <p className="text-xs sm:text-sm md:text-base text-richblack-300">
                         {`Home / Catalog / `}
@@ -157,13 +162,13 @@ function Catalog() {
                         {catalogPageData?.selectedCategory?.description}
                     </p>
                 </div>
-            </div>
+                </div>
 
-            {/* Section 1 */}
-            <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
+                {/* Section 1 */}
+                <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
                 <div 
                     className="section_heading text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-richblack-5 mb-4 sm:mb-6"
-                    style={{ opacity: 1, visibility: 'visible', transform: 'none', transition: 'none' }}
+                    
                     data-course-component="true"
                 >
                     Courses to get you started
@@ -199,10 +204,10 @@ function Catalog() {
                         Courses={catalogPageData?.selectedCategory?.courses}
                     />
                 </div>
-            </div>
+                </div>
 
-            {/* Section 2 */}
-            <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
+                {/* Section 2 */}
+                <div className="mx-auto box-content w-full max-w-maxContentTab px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 lg:max-w-maxContent">
                 <div 
                     className="section_heading text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-richblack-5 mb-4 sm:mb-6"
                     style={{ opacity: 1, visibility: 'visible', transform: 'none', transition: 'none' }}
@@ -215,14 +220,13 @@ function Catalog() {
                         Courses={catalogPageData?.differentCategory?.courses}
                     />
                 </div>
+                </div>
+
+                {/* Bundle Course Section */}
+                <BundleCourseSection courses={catalogPageData?.selectedCategory?.courses} />
+
+                <ImprovedFooter />
             </div>
-
-
-
-            {/* Bundle Course Section */}
-            <BundleCourseSection courses={catalogPageData?.selectedCategory?.courses} />
-
-            <ImprovedFooter />
         </>
     )
 }

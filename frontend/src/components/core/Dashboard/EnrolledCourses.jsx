@@ -99,7 +99,7 @@ export default function EnrolledCourses() {
         <h2 className="text-2xl font-bold text-white mb-2">No Courses Yet</h2>
         <p className="text-slate-400 mb-8">You haven't enrolled in any courses. Start your learning journey today!</p>
         <button 
-          onClick={() => navigate('/catalog')}
+          onClick={() => navigate('/courses')}
           className="px-6 py-3 bg-purple-500/10 text-purple-400 rounded-xl hover:bg-purple-500/20 transition-all duration-300"
         >
           Browse Courses

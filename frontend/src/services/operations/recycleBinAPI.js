@@ -12,7 +12,7 @@ const RECYCLE_BIN_API = {
 
 // Get all recycle bin items
 export const getRecycleBinItems = async (token, itemType = null, page = 1, limit = 10) => {
-    const toastId = toast.loading("Loading recycle bin items...");
+    const toastId = toast.loading("Loading..");
     let result = [];
     
     try {
@@ -39,7 +39,6 @@ export const getRecycleBinItems = async (token, itemType = null, page = 1, limit
         }
 
         result = response.data;
-        toast.success("Recycle bin items loaded successfully");
     } catch (error) {
         console.error("GET_RECYCLE_BIN_ITEMS_API ERROR:", error);
         toast.error(error?.response?.data?.message || "Failed to load recycle bin items");

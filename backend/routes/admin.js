@@ -32,6 +32,12 @@ const {
     cleanupExpiredCoupons
 } = require('../controllers/coupon');
 const { getAllOrders, deleteOrder, updateOrderStatus, generateOrdersPDF } = require('../controllers/order');
+const { 
+    getAllReviewsForAdmin, 
+    toggleReviewSelection, 
+    bulkUpdateReviewSelection,
+    deleteReview 
+} = require('../controllers/ratingAndReview');
 
 // Import middleware
 const { auth, isAdmin } = require('../middleware/auth');
@@ -79,5 +85,11 @@ router.get('/orders/export-pdf', auth, isAdmin, generateOrdersPDF);
 router.post('/notifications/send', auth, isAdmin, sendNotification);
 router.get('/notifications', auth, isAdmin, getAllNotifications);
 router.delete('/notifications/:notificationId', auth, isAdmin, deleteNotification);
+
+// ================ REVIEW MANAGEMENT ROUTES ================
+router.get('/reviews', auth, isAdmin, getAllReviewsForAdmin);
+router.put('/reviews/:reviewId/toggle-selection', auth, isAdmin, toggleReviewSelection);
+router.put('/reviews/bulk-update-selection', auth, isAdmin, bulkUpdateReviewSelection);
+router.delete('/reviews/:reviewId', auth, isAdmin, deleteReview);
 
 module.exports = router;

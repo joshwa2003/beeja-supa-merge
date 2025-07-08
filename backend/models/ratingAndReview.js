@@ -22,7 +22,12 @@ const ratingAndReviewSchema = new mongoose.Schema({
 		ref: "Course",
 		index: true,
 	},
-
+    isSelected: {
+        type: Boolean,
+        default: false
+    }
+}, {
+    timestamps: true
 });
 
 module.exports = mongoose.model('RatingAndReview', ratingAndReviewSchema);

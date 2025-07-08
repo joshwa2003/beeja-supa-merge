@@ -18,6 +18,10 @@ const {
   GET_ANALYTICS_API,
   GET_STUDENTS_BY_COURSE_API,
   GET_STUDENT_PROGRESS_API,
+  GET_ALL_REVIEWS_ADMIN_API,
+  TOGGLE_REVIEW_SELECTION_API,
+  BULK_UPDATE_REVIEW_SELECTION_API,
+  DELETE_REVIEW_API,
 } = adminEndpoints
 
 
@@ -679,6 +683,193 @@ export const setCourseType = async (courseId, courseType, token) => {
       status: error.response?.status
     })
     const errorMessage = error.response?.data?.message || error.message || "Failed to update course type"
+    toast.error(errorMessage)
+    throw error
+  } finally {
+    toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Get All Reviews for Admin ================
+export const getAllReviewsForAdmin = async (token) => {
+  let result = []
+  const toastId = toast.loading("Loading reviews...")
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    const response = await apiConnector("GET", GET_ALL_REVIEWS_ADMIN_API, null, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("GET_ALL_REVIEWS_ADMIN_API Response:", response)
+    
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Fetch Reviews")
+    }
+    
+    if (!response?.data?.data) {
+      throw new Error("No reviews data received")
+    }
+    
+    result = response.data.data
+    console.log("Fetched reviews:", result.length)
+  } catch (error) {
+    console.error("GET_ALL_REVIEWS_ADMIN_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    const errorMessage = error.response?.data?.message || error.message || "Failed to fetch reviews"
+    toast.error(errorMessage)
+    throw error
+  } finally {
+    toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Toggle Review Selection ================
+export const toggleReviewSelection = async (reviewId, token) => {
+  const toastId = toast.loading("Updating review selection...")
+  let result = null
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    if (!reviewId) {
+      throw new Error("Review ID is required")
+    }
+
+    const url = TOGGLE_REVIEW_SELECTION_API.replace(':reviewId', reviewId)
+    
+    const response = await apiConnector("PUT", url, {}, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("TOGGLE_REVIEW_SELECTION_API RESPONSE............", response)
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Update Review Selection")
+    }
+
+    if (!response?.data?.data) {
+      throw new Error("No review data received in response")
+    }
+
+    toast.success(response?.data?.message || "Review selection updated successfully")
+    result = response.data.data
+  } catch (error) {
+    console.error("TOGGLE_REVIEW_SELECTION_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    const errorMessage = error.response?.data?.message || error.message || "Failed to update review selection"
+    toast.error(errorMessage)
+    throw error
+  } finally {
+    toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Bulk Update Review Selection ================
+export const bulkUpdateReviewSelection = async (reviewIds, isSelected, token) => {
+  const toastId = toast.loading("Updating review selections...")
+  let result = null
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    if (!reviewIds || !Array.isArray(reviewIds)) {
+      throw new Error("Review IDs array is required")
+    }
+
+    if (typeof isSelected !== 'boolean') {
+      throw new Error("isSelected must be a boolean value")
+    }
+
+    const response = await apiConnector("PUT", BULK_UPDATE_REVIEW_SELECTION_API, {
+      reviewIds,
+      isSelected
+    }, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("BULK_UPDATE_REVIEW_SELECTION_API RESPONSE............", response)
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Update Review Selections")
+    }
+
+    if (!response?.data?.data) {
+      throw new Error("No data received in response")
+    }
+
+    toast.success(response?.data?.message || "Review selections updated successfully")
+    result = response.data.data
+  } catch (error) {
+    console.error("BULK_UPDATE_REVIEW_SELECTION_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    const errorMessage = error.response?.data?.message || error.message || "Failed to update review selections"
+    toast.error(errorMessage)
+    throw error
+  } finally {
+    toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Delete Review ================
+export const deleteReview = async (reviewId, token) => {
+  const toastId = toast.loading("Deleting review...")
+  let result = false
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    if (!reviewId) {
+      throw new Error("Review ID is required")
+    }
+
+    const url = DELETE_REVIEW_API.replace(':reviewId', reviewId)
+    
+    const response = await apiConnector("DELETE", url, null, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("DELETE_REVIEW_API RESPONSE............", response)
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Delete Review")
+    }
+
+    
+    result = true
+  } catch (error) {
+    console.error("DELETE_REVIEW_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    const errorMessage = error.response?.data?.message || error.message || "Failed to delete review"
     toast.error(errorMessage)
     throw error
   } finally {

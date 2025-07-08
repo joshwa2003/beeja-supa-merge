@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require('../config/supabaseAdmin');
 const sharp = require('sharp');
 const { getBucketForFileType, validateFile } = require('../config/supabaseStorage');
+const { uploadVideoInChunks } = require('./chunkedVideoUploader');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -11,6 +12,12 @@ const IMAGE_CONFIG = {
     quality: 85,
     format: 'jpeg',
     maxFileSize: 10 * 1024 * 1024 // 10MB
+};
+
+// Video chunking configuration for Supabase free tier
+const VIDEO_CONFIG = {
+    chunkThreshold: 50 * 1024 * 1024, // 50MB - files larger than this will be chunked (Supabase free tier limit)
+    maxDirectUploadSize: 50 * 1024 * 1024 // 50MB - maximum size for direct upload (Supabase free tier limit)
 };
 
 /**
@@ -98,7 +105,7 @@ const processImage = async (fileBuffer, options = {}) => {
 };
 
 /**
- * Upload file to Supabase Storage
+ * Upload file to Supabase Storage with automatic chunking for large videos
  * This replaces uploadImageToCloudinary function
  */
 const uploadFileToSupabase = async (file, folder = '', options = {}) => {
@@ -120,7 +127,30 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
         const bucket = getBucketForFileType(file.mimetype, folder);
         console.log(`📁 Using bucket: ${bucket}`);
 
-        // Validate file
+        // Check if it's a video and if it needs chunked upload
+        const isVideo = file.mimetype.startsWith('video/');
+        const isLargeVideo = isVideo && file.size > VIDEO_CONFIG.chunkThreshold;
+
+        if (isLargeVideo) {
+            console.log('🎬 Large video detected, using chunked upload...');
+            
+            // Use chunked upload for large videos
+            const result = await uploadVideoInChunks(file, folder);
+            
+            console.log('✅ Chunked video upload successful:', {
+                secure_url: result.secure_url,
+                public_id: result.public_id,
+                bucket: result.bucket,
+                size: result.size
+            });
+
+            return result;
+        }
+
+        // For non-videos or small videos, use regular upload
+        console.log('📤 Using regular upload...');
+
+        // Validate file for regular upload
         const validation = validateFile(file, bucket);
         if (!validation.isValid) {
             throw new Error(`File validation failed: ${validation.errors.join(', ')}`);
@@ -334,5 +364,6 @@ module.exports = {
     getPublicUrl,
     listFiles,
     processImage,
-    generateUniqueFilename
+    generateUniqueFilename,
+    VIDEO_CONFIG
 };

@@ -13,15 +13,20 @@ const STORAGE_BUCKETS = {
 // File size limits (in bytes)
 const FILE_SIZE_LIMITS = {
     IMAGE: 10 * 1024 * 1024,    // 10MB
-    VIDEO: 100 * 1024 * 1024,   // 100MB (Supabase free tier limit)
+    VIDEO: 2 * 1024 * 1024 * 1024, // 2GB (with chunked upload support)
     DOCUMENT: 50 * 1024 * 1024, // 50MB
     PROFILE: 5 * 1024 * 1024    // 5MB
+};
+
+// Chunked upload configuration for Supabase free tier (50MB limit per file)
+const CHUNKED_UPLOAD_CONFIG = {
+    MAX_DIRECT_UPLOAD: 50 * 1024 * 1024, // 50MB max for direct upload (Supabase free tier)
+    SUPABASE_FREE_LIMIT: 50 * 1024 * 1024 // 50MB Supabase free tier limit
 };
 
 // Allowed file types
 const ALLOWED_FILE_TYPES = {
     IMAGES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-    VIDEOS: ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov'],
     DOCUMENTS: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 };
 
@@ -189,15 +194,20 @@ const getBucketForFileType = (mimetype, folder = '') => {
 };
 
 /**
- * Validate file type and size
+ * Validate file type and size (updated for chunked uploads)
  */
 const validateFile = (file, bucket) => {
     const errors = [];
     
-    // Check file size
+    // Check file size - for videos, we allow larger sizes with chunked upload
     const sizeLimit = getFileSizeLimit(bucket);
-    if (file.size > sizeLimit) {
+    const isVideo = file.mimetype.startsWith('video/');
+    
+    // For videos larger than chunk threshold, we'll use chunked upload
+    if (!isVideo && file.size > sizeLimit) {
         errors.push(`File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds limit (${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`);
+    } else if (isVideo && file.size > sizeLimit) {
+        errors.push(`Video file size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit (${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`);
     }
     
     // Check file type
@@ -208,17 +218,28 @@ const validateFile = (file, bucket) => {
     
     return {
         isValid: errors.length === 0,
-        errors
+        errors,
+        willUseChunkedUpload: isVideo && file.size > CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD
     };
+};
+
+/**
+ * Check if file should use chunked upload
+ */
+const shouldUseChunkedUpload = (file) => {
+    const isVideo = file.mimetype.startsWith('video/');
+    return isVideo && file.size > CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD;
 };
 
 module.exports = {
     STORAGE_BUCKETS,
     FILE_SIZE_LIMITS,
     ALLOWED_FILE_TYPES,
+    CHUNKED_UPLOAD_CONFIG,
     initializeStorageBuckets,
     getBucketForFileType,
     validateFile,
+    shouldUseChunkedUpload,
     getAllowedMimeTypes,
     getFileSizeLimit
 };

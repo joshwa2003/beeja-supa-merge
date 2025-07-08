@@ -79,14 +79,14 @@ const Home = () => {
       {/* Main Content above background */}
       <div className="relative z-10">
         {/* Section 1 */}
-        <div id='home-welcome' className='relative min-h-[400px] justify-center mx-auto flex flex-col w-11/12 max-w-maxContent items-center text-white px-4 py-8 md:py-12'>
+        <div id='home-welcome' className='relative min-h-[350px] sm:min-h-[400px] justify-center mx-auto flex flex-col w-11/12 max-w-maxContent items-center text-white px-4 py-6 sm:py-8 md:py-12'>
 
           <motion.div
             variants={fadeIn('left', 0.1)}
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.1 }}
-            className='text-center text-2xl sm:text-3xl lg:text-4xl font-semibold'
+            className='text-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight'
           >
             Welcome to
             <HighlightText text={"Beeja "} />
@@ -98,7 +98,7 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.1 }}
-            className='mt-4 w-full md:w-[90%] text-center text-sm sm:text-base lg:text-lg font-bold text-richblack-200 max-w-3xl mx-auto'
+            className='mt-4 w-full md:w-[90%] text-center text-sm sm:text-base lg:text-lg font-bold text-richblack-200 max-w-3xl mx-auto leading-relaxed px-2'
           >
             Embark on a seamless learning experienced with our state of the art platform. Dive into courses crafted to inspire, challenge, and empower you for success.
           </motion.div>
@@ -108,11 +108,12 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
-            className='flex flex-col sm:flex-row gap-4 sm:gap-7 mt-8 w-full justify-center items-center'
+            className='flex flex-col sm:flex-row gap-4 sm:gap-7 mt-6 sm:mt-8 w-full justify-center items-center max-w-md sm:max-w-none'
           >
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className='w-full sm:w-auto'
             >
               <CTAButton active={true} linkto={"/signup"}>
                 Get Started
@@ -121,9 +122,12 @@ const Home = () => {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className='w-full sm:w-auto'
             >
               <CTAButton active={false} linkto={"/login"}>
-                Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+                <span className='flex items-center justify-center gap-2'>
+                  Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className='text-xs sm:text-sm' />
+                </span>
               </CTAButton>
             </motion.div>
           </motion.div>
@@ -197,22 +201,23 @@ const Home = () => {
         </motion.div>
 
         {/* Code Blocks */}
-        <div className='relative mx-auto flex flex-col w-11/12 max-w-maxContent items-center text-white justify-between'>
+        <div className='relative mx-auto flex flex-col w-11/12 max-w-maxContent items-center text-white justify-between px-4 sm:px-6 lg:px-0'>
           <motion.div
             variants={fadeIn('up', 0.2)}
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
+            className='w-full'
           >
             <CodeBlocks
               position={"lg:flex-row"}
-              heading={<div className='text-2xl sm:text-3xl lg:text-4xl font-semibold'>Master Coding with <HighlightText text={"Beeja's Expert-Led "} /> courses</div>}
+              heading={<div className='text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight text-center lg:text-left'>Master Coding with <HighlightText text={"Beeja's Expert-Led "} /> courses</div>}
               subheading={"Elevate your programming skills with Beeja, where hands-on learning meets expert guidance to unlock your full coding potential."}
               ctabtn1={{ btnText: "try it yourself", link: "/login", active: true }}
               ctabtn2={{
                 btnText: (
                   <>
-                    Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-2" />
+                    Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1 sm:ml-2 text-xs sm:text-sm" />
                   </>
                 ),
                 link: "/signup",
@@ -230,10 +235,11 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
+            className='w-full'
           >
             <CodeBlocks
               position={"lg:flex-row-reverse"}
-              heading={<div className="w-[100%] text-2xl sm:text-3xl lg:text-4xl font-semibold lg:w-[50%]">Code Instantly  <HighlightText text={"with Beeja"} /></div>}
+              heading={<div className="w-[100%] text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold lg:w-[50%] leading-tight text-center lg:text-left">Code Instantly  <HighlightText text={"with Beeja"} /></div>}
               subheading={"Jump right into coding at Beeja, where our interactive lessons get you building real-world projects from the very start."}
               ctabtn1={{ btnText: "Continue Lesson", link: "/signup", active: true }}
               ctabtn2={{ btnText: "Learn More", link: "/signup", active: false }}
@@ -249,7 +255,7 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.1 }}
-          className='text-center text-2xl sm:text-3xl lg:text-4xl font-semibold mt-12 mb-8 px-4'
+            className='text-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold mt-8 sm:mt-12 mb-6 sm:mb-8 px-4 leading-tight'
           >
             Meet Our Expert
             <HighlightText text={" Team"} />
@@ -259,27 +265,30 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
+            className='px-4 sm:px-6 lg:px-0'
           >
             <TeamSlider />
           </motion.div>
 
-          <div className="w-full py-12">
+          <div className="w-full py-8 sm:py-12">
             {/* Section Header */}
             <motion.div
               variants={fadeIn('up', 0.1)}
               initial='hidden'
               whileInView={'show'}
               viewport={{ once: false, amount: 0.1 }}
-              className='text-center mb-12 px-4'
+              className='text-center mb-8 sm:mb-12 px-4'
             >
-              <h2 className='text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-4'>
+              <h2 className='text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-white mb-4 leading-tight'>
                 Our Technology
                 <HighlightText text={" Partner"} />
               </h2>
             </motion.div>
 
             {/* Split Screen Section */}
-            <SplitScreen />
+            <div className='px-4 sm:px-6 lg:px-0'>
+              <SplitScreen />
+            </div>
           </div>
 
 
@@ -289,20 +298,17 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
-            className="mx-auto box-content w-full max-w-maxContentTab px-4 py-8 lg:max-w-maxContent overflow-hidden"
+            className="mx-auto box-content w-full max-w-maxContentTab px-4 py-6 sm:py-8 lg:max-w-maxContent overflow-hidden"
           >
             <FeaturedCourses />
           </motion.div>
-
-
-
 
           <motion.div
             variants={fadeIn('up', 0.2)}
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
-            className="mb-4"
+            className="mb-4 px-4 sm:px-6 lg:px-0"
           >
             <ExploreMore />
           </motion.div>
@@ -313,13 +319,13 @@ const Home = () => {
           
 
           <div className='mx-auto w-11/12 max-w-maxContent flex flex-col items-center justify-between gap-7'>
-            <div className='flex flex-col lg:flex-row gap-5 mb-8 mt-[60px]'>
+            <div className='flex flex-col lg:flex-row gap-6 lg:gap-8 mb-8 mt-[40px] sm:mt-[60px] px-4 sm:px-6 lg:px-0'>
               <motion.div
                 variants={fadeIn('right', 0.2)}
                 initial='hidden'
                 whileInView={'show'}
                 viewport={{ once: false, amount: 0.2 }}
-                className='text-2xl sm:text-3xl lg:text-4xl font-semibold w-full lg:w-[45%] text-center lg:text-left'
+                className='text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold w-full lg:w-[45%] text-center lg:text-left leading-tight sm:leading-normal'
               >
                 Get the Skills you need for a <HighlightText text={"Job that is in demand"} />
               </motion.div>
@@ -329,17 +335,20 @@ const Home = () => {
                 initial='hidden'
                 whileInView={'show'}
                 viewport={{ once: false, amount: 0.2 }}
-              className='flex flex-col gap-6 sm:gap-10 w-full lg:w-[40%] items-center lg:items-start text-center lg:text-left'
+                className='flex flex-col gap-4 sm:gap-6 lg:gap-10 w-full lg:w-[40%] items-center lg:items-start text-center lg:text-left'
               >
-                <div className='text-[16px]'>
+                <div className='text-sm sm:text-base lg:text-[16px] leading-relaxed text-richblack-600 max-w-md lg:max-w-none'>
                   The modern StudyNotion dictates its own terms. Today, to be a competitive specialist requires more than professional skills.
                 </div>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  className='w-full sm:w-auto'
                 >
                   <CTAButton active={true} linkto={"/signup"}>
-                    <div>Learn more <FontAwesomeIcon icon={faArrowUpRightFromSquare} /></div>
+                    <div className='flex items-center justify-center gap-2 text-sm sm:text-base'>
+                      Learn more <FontAwesomeIcon icon={faArrowUpRightFromSquare} className='text-xs sm:text-sm' />
+                    </div>
                   </CTAButton>
                 </motion.div>
               </motion.div>
@@ -366,7 +375,7 @@ const Home = () => {
         </div>
 
         {/* Section 3 */}
-        <div className='mt-8 w-11/12 mx-auto max-w-maxContent flex-col items-center justify-between gap-6 bg-richblack-900 text-white'>
+        <div className='mt-6 sm:mt-8 w-11/12 mx-auto max-w-maxContent flex-col items-center justify-between gap-6 bg-richblack-900 text-white px-4 sm:px-6 lg:px-0'>
           <motion.div
             variants={fadeIn('up', 0.2)}
             initial='hidden'
@@ -381,16 +390,16 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
-            className="text-center text-2xl sm:text-3xl lg:text-4xl font-semibold mt-8 flex justify-center items-center gap-x-3 px-4"
+            className="text-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-x-3 px-4 leading-tight"
           >
-            Reviews from other learners
+            <span>Reviews from other learners</span>
             <motion.span
               variants={bounce}
               initial='hidden'
               whileInView={'show'}
               viewport={{ once: false, amount: 0.2 }}
             >
-              <MdOutlineRateReview className='text-yellow-25' />
+              <MdOutlineRateReview className='text-yellow-25 text-2xl sm:text-3xl lg:text-4xl' />
             </motion.span>
           </motion.h1>
 
@@ -399,6 +408,7 @@ const Home = () => {
             initial='hidden'
             whileInView={'show'}
             viewport={{ once: false, amount: 0.2 }}
+            className='w-full'
           >
             <ReviewSlider />
           </motion.div>

@@ -63,7 +63,7 @@ const FeaturedCoursesManagement = () => {
         topEnrollments: featuredCourses.topEnrollments
       };
       await updateFeaturedCourses(dataToSend, token);
-      toast.success('Featured courses updated successfully!');
+      
     } catch (error) {
       console.error('Error saving featured courses:', error);
       toast.error('Failed to save featured courses');

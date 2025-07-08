@@ -207,7 +207,7 @@ export default function UserAnalytics() {
             <div className="flex-1">
               <p className="text-purple-200 text-xs font-semibold uppercase tracking-wider mb-1">⏰ Learning Time</p>
               <h3 className="text-3xl font-bold text-white">
-                {Math.floor(analyticsData.overview.totalLearningTime / 60)}h {analyticsData.overview.totalLearningTime % 60}m
+                {Math.floor(analyticsData.overview.totalLearningTime / 60)}h {Math.round(analyticsData.overview.totalLearningTime % 60)}m
               </h3>
               <p className="text-purple-200 text-xs">
                 🔥 {analyticsData.learningStreak} day streak

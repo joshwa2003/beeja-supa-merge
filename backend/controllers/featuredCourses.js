@@ -41,6 +41,10 @@ exports.getFeaturedCourses = async (req, res) => {
                 path: 'subSection',
                 select: 'timeDuration'
             }
+        })
+        .populate({
+            path: 'ratingAndReviews',
+            select: 'rating'
         });
 
         // Fetch top enrollments courses
@@ -58,6 +62,10 @@ exports.getFeaturedCourses = async (req, res) => {
                 path: 'subSection',
                 select: 'timeDuration'
             }
+        })
+        .populate({
+            path: 'ratingAndReviews',
+            select: 'rating'
         });
 
         console.log('Fetched courses:', {
@@ -70,7 +78,22 @@ exports.getFeaturedCourses = async (req, res) => {
             } : 'none'
         });
 
-        // Calculate duration for popular picks
+        // Helper function to calculate rating data
+        const calculateRatingData = (ratingAndReviews) => {
+            if (!ratingAndReviews || ratingAndReviews.length === 0) {
+                return { averageRating: 0, totalRatings: 0 };
+            }
+            
+            const totalRating = ratingAndReviews.reduce((sum, review) => sum + review.rating, 0);
+            const averageRating = totalRating / ratingAndReviews.length;
+            
+            return {
+                averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+                totalRatings: ratingAndReviews.length
+            };
+        };
+
+        // Calculate duration and rating for popular picks
         const processedPopularPicks = popularPicksCourses.map(course => {
             let totalDurationInSeconds = 0;
             if (course.courseContent) {
@@ -85,13 +108,18 @@ exports.getFeaturedCourses = async (req, res) => {
                     }
                 });
             }
+            
+            const ratingData = calculateRatingData(course.ratingAndReviews);
             const courseObj = course.toObject();
             courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+            courseObj.averageRating = ratingData.averageRating;
+            courseObj.totalRatings = ratingData.totalRatings;
             delete courseObj.courseContent; // Remove courseContent from response
+            delete courseObj.ratingAndReviews; // Remove ratingAndReviews from response
             return courseObj;
         });
 
-        // Calculate duration for top enrollments
+        // Calculate duration and rating for top enrollments
         const processedTopEnrollments = topEnrollmentsCourses.map(course => {
             let totalDurationInSeconds = 0;
             if (course.courseContent) {
@@ -106,9 +134,14 @@ exports.getFeaturedCourses = async (req, res) => {
                     }
                 });
             }
+            
+            const ratingData = calculateRatingData(course.ratingAndReviews);
             const courseObj = course.toObject();
             courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+            courseObj.averageRating = ratingData.averageRating;
+            courseObj.totalRatings = ratingData.totalRatings;
             delete courseObj.courseContent; // Remove courseContent from response
+            delete courseObj.ratingAndReviews; // Remove ratingAndReviews from response
             return courseObj;
         });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
-import { FaUsers, FaBookOpen, FaChartBar, FaGraduationCap, FaQuestionCircle, FaStar, FaComments, FaTag, FaChartLine, FaCommentDots, FaBriefcase, FaEnvelope, FaTrash } from 'react-icons/fa';
+import { FaUsers, FaBookOpen, FaChartBar, FaGraduationCap, FaQuestionCircle, FaStar, FaComments, FaTag, FaChartLine, FaCommentDots, FaBriefcase, FaEnvelope, FaTrash , FaSmile} from 'react-icons/fa';
 import { MdSettings, MdKeyboardArrowLeft, MdKeyboardArrowRight } from 'react-icons/md';
 import { FiBell } from 'react-icons/fi';
 import { VscSignOut, VscPackage, VscGitPullRequestCreate, VscSymbolClass } from "react-icons/vsc";
@@ -28,6 +28,7 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
     { id: 'studentProgress', label: 'Student Progress', icon: <FaChartLine size={16} /> },
     { id: 'quizzes', label: 'Quiz Management', icon: <FaQuestionCircle size={16} /> },
     { id: 'featuredCourses', label: 'Featured Courses', icon: <FaStar size={16} /> },
+    { id: 'reviews', label: 'Review', icon: <FaSmile size={16} /> },
     { id: 'accessRequests', label: 'Access Requests', icon: <FaUsers size={16} /> },
     { id: 'bundleRequests', label: 'Bundle Requests', icon: <VscGitPullRequestCreate size={16} /> },
     { id: 'orders', label: 'Orders', icon: <VscPackage size={16} /> },
