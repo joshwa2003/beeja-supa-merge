@@ -107,7 +107,7 @@ const ModernNavbar = () => {
               width={120}
               height={30}
               loading="lazy"
-              alt="StudyNotion Logo"
+              alt="BeejaAcademy Logo"
               className="transition-all duration-300 hover:brightness-110"
             />
           </Link>

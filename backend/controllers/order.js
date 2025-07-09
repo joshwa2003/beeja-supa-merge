@@ -104,6 +104,55 @@ exports.updateOrderStatus = async (req, res) => {
     }
 };
 
+// Get order by user and course (for student invoice)
+exports.getOrderByCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const userId = req.user.id;
+
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid course ID'
+            });
+        }
+
+        const order = await Order.findOne({
+            user: userId,
+            course: courseId
+        })
+        .populate('user', 'firstName lastName email additionalDetails')
+        .populate('course', 'courseName instructor')
+        .populate({
+            path: 'course',
+            populate: {
+                path: 'instructor',
+                select: 'firstName lastName email'
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found for this course'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            order,
+            message: 'Order fetched successfully'
+        });
+    } catch (error) {
+        console.error('Error fetching order by course:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching order',
+            error: error.message
+        });
+    }
+};
+
 // Generate Orders PDF
 exports.generateOrdersPDF = async (req, res) => {
     try {

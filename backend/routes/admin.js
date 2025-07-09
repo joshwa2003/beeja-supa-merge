@@ -31,7 +31,7 @@ const {
     getCouponAnalytics,
     cleanupExpiredCoupons
 } = require('../controllers/coupon');
-const { getAllOrders, deleteOrder, updateOrderStatus, generateOrdersPDF } = require('../controllers/order');
+const { getAllOrders, deleteOrder, updateOrderStatus, generateOrdersPDF, getOrderByCourse } = require('../controllers/order');
 const { 
     getAllReviewsForAdmin, 
     toggleReviewSelection, 
@@ -81,6 +81,7 @@ router.get('/orders', auth, isAdmin, getAllOrders);
 router.delete('/orders/:orderId', auth, isAdmin, deleteOrder);
 router.patch('/orders/:orderId/status', auth, isAdmin, updateOrderStatus);
 router.get('/orders/export-pdf', auth, isAdmin, generateOrdersPDF);
+router.get('/orders/course/:courseId', auth, getOrderByCourse);
 // ================ NOTIFICATION MANAGEMENT ROUTES ================
 router.post('/notifications/send', auth, isAdmin, sendNotification);
 router.get('/notifications', auth, isAdmin, getAllNotifications);

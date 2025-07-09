@@ -58,7 +58,8 @@ exports.toggleUserStatus = async (req, res) => {
 // ================ GET ALL USERS ================
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({})
+        // Only fetch active users (exclude users that have been moved to recycle bin)
+        const users = await User.find({ active: true })
             .populate('additionalDetails')
             .select('-password')
             .sort({ createdAt: -1 });
@@ -627,10 +628,11 @@ exports.setCourseType = async (req, res) => {
 // ================ GET ANALYTICS DATA ================
 exports.getAnalytics = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments();
-        const studentCount = await User.countDocuments({ accountType: 'Student' });
-        const instructorCount = await User.countDocuments({ accountType: 'Instructor' });
-        const adminCount = await User.countDocuments({ accountType: 'Admin' });
+        // Only count active users (exclude users that have been moved to recycle bin)
+        const totalUsers = await User.countDocuments({ active: true });
+        const studentCount = await User.countDocuments({ accountType: 'Student', active: true });
+        const instructorCount = await User.countDocuments({ accountType: 'Instructor', active: true });
+        const adminCount = await User.countDocuments({ accountType: 'Admin', active: true });
 
         const totalCourses = await Course.countDocuments();
         const publishedCourses = await Course.countDocuments({ status: 'Published' });
@@ -641,7 +643,8 @@ exports.getAnalytics = async (req, res) => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const recentRegistrations = await User.countDocuments({
-            createdAt: { $gte: thirtyDaysAgo }
+            createdAt: { $gte: thirtyDaysAgo },
+            active: true
         });
 
         // Get pending access requests count
@@ -678,7 +681,8 @@ exports.getAnalytics = async (req, res) => {
         
         // For recent logins, we'll get recently created users as a proxy since we don't track login times
         const recentLogins = await User.find({
-            createdAt: { $gte: sevenDaysAgoForUsers }
+            createdAt: { $gte: sevenDaysAgoForUsers },
+            active: true
         })
         .select('firstName lastName email accountType createdAt')
         .sort({ createdAt: -1 })
@@ -688,7 +692,8 @@ exports.getAnalytics = async (req, res) => {
 
         // Get active users (users created in last 30 days)
         const activeLogins = await User.find({
-            createdAt: { $gte: thirtyDaysAgo }
+            createdAt: { $gte: thirtyDaysAgo },
+            active: true
         })
         .select('firstName lastName email accountType createdAt')
         .sort({ createdAt: -1 })
@@ -733,7 +738,8 @@ exports.getAnalytics = async (req, res) => {
 // ================ GET ALL INSTRUCTORS ================
 exports.getAllInstructors = async (req, res) => {
     try {
-        const instructors = await User.find({ accountType: 'Instructor' })
+        // Only fetch active instructors (exclude instructors that have been moved to recycle bin)
+        const instructors = await User.find({ accountType: 'Instructor', active: true })
             .select('firstName lastName email _id')
             .sort({ createdAt: -1 });
 

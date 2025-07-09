@@ -25,6 +25,7 @@ export const studentEndpoints = {
   COURSE_PAYMENT_API: BASE_URL + "/api/v1/payment/capturePayment",
   COURSE_VERIFY_API: BASE_URL + "/api/v1/payment/verifyPayment",
   SEND_PAYMENT_SUCCESS_EMAIL_API: BASE_URL + "/api/v1/payment/sendPaymentSuccessEmail",
+  GET_ORDER_BY_COURSE_API: BASE_URL + "/api/v1/payment/order/course/:courseId",
 }
 
 // COURSE ENDPOINTS
@@ -135,6 +136,7 @@ export const adminEndpoints = {
   DELETE_ORDER_API: BASE_URL + "/api/v1/admin/orders/:orderId",
   UPDATE_ORDER_STATUS_API: BASE_URL + "/api/v1/admin/orders/:orderId/status",
   GENERATE_ORDERS_PDF_API: BASE_URL + "/api/v1/admin/orders/export-pdf",
+  GET_ORDER_BY_COURSE_API: BASE_URL + "/api/v1/admin/orders/course/:courseId",
   // Notification Management
   SEND_NOTIFICATION_API: BASE_URL + "/api/v1/admin/notifications/send",
   GET_ALL_NOTIFICATIONS_API: BASE_URL + "/api/v1/admin/notifications",

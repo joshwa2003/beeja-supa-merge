@@ -191,7 +191,7 @@ const RecycleBin = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-richblack-800 border border-richblack-700 rounded-lg p-4">
                         <div className="flex items-center gap-3">
-                            <FaTrash className="w-8 h-8 text-gray-400" />
+                            <FaTrash className="w-8 h-8 text-red-600" />
                             <div>
                                 <p className="text-richblack-300 text-sm">Total Items</p>
                                 <p className="text-2xl font-bold text-richblack-5">{stats.totalItems}</p>

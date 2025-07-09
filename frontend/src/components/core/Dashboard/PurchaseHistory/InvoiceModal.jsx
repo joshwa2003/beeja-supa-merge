@@ -1,17 +1,7 @@
 import React from 'react'
 import { FiX, FiPrinter } from 'react-icons/fi'
 
-export default function OrderViewModal({ order, onClose }) {
-  const handlePrint = () => {
-    const printContent = document.getElementById('invoice-content')
-    const originalContent = document.body.innerHTML
-    
-    document.body.innerHTML = printContent.innerHTML
-    window.print()
-    document.body.innerHTML = originalContent
-    window.location.reload()
-  }
-
+export default function InvoiceModal({ order, onClose }) {
   const generatePDF = async () => {
     try {
       // Create a new window for printing
@@ -231,10 +221,10 @@ export default function OrderViewModal({ order, onClose }) {
                         <p>1</p>
                       </div>
                       <div class="i_col w_15 text_center">
-                        <p>${order.amount === 0 ? 'Free' : `Rs. ${order.amount}`}</p>
+                        <p>${order.originalPrice > 0 ? `Rs. ${order.originalPrice}` : (order.amount === 0 ? 'Free' : `Rs. ${order.amount}`)}</p>
                       </div>
                       <div class="i_col w_15 text_right">
-                        <p>${order.amount === 0 ? 'Free' : `Rs. ${order.amount}`}</p>
+                        <p>${order.originalPrice > 0 ? `Rs. ${order.originalPrice}` : (order.amount === 0 ? 'Free' : `Rs. ${order.amount}`)}</p>
                       </div>
                     </div>
                   </div>

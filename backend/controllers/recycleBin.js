@@ -2,6 +2,8 @@ const RecycleBin = require('../models/recycleBin');
 const Course = require('../models/course');
 const User = require('../models/user');
 const Category = require('../models/category');
+const TokenBlacklist = require('../models/tokenBlacklist');
+const jwt = require('jsonwebtoken');
 
 // Get all items in recycle bin
 exports.getRecycleBinItems = async (req, res) => {
@@ -110,6 +112,16 @@ exports.moveToRecycleBin = async (req, res) => {
                 await User.findByIdAndUpdate(itemId, { 
                     active: false 
                 });
+                
+                // Blacklist all active tokens for this user to force logout
+                try {
+                    console.log('Blacklisting all tokens for user:', itemId);
+                    await blacklistAllUserTokens(itemId, 'USER_DELETED');
+                    console.log('✅ All tokens blacklisted for user:', itemId);
+                } catch (tokenError) {
+                    console.error('❌ Error blacklisting user tokens:', tokenError.message);
+                    // Continue execution even if token blacklisting fails
+                }
                 break;
             case 'Category':
                 // For categories, we'll just mark them in recycle bin
@@ -163,6 +175,17 @@ exports.restoreFromRecycleBin = async (req, res) => {
                 await User.findByIdAndUpdate(originalId, {
                     active: true
                 });
+                
+                // Remove user from token blacklist to allow them to login again
+                try {
+                    console.log('Removing user from token blacklist:', originalId);
+                    const userTokenIdentifier = `USER_${originalId}_ALL_TOKENS`;
+                    await TokenBlacklist.deleteOne({ token: userTokenIdentifier });
+                    console.log('✅ User removed from token blacklist:', originalId);
+                } catch (tokenError) {
+                    console.error('❌ Error removing user from token blacklist:', tokenError.message);
+                    // Continue execution even if token removal fails
+                }
                 break;
             case 'Category':
                 // Restore category if it was soft deleted
@@ -304,5 +327,34 @@ exports.cleanupExpiredItems = async (req, res) => {
             message: 'Error cleaning up expired items',
             error: error.message
         });
+    }
+};
+
+// ================ UTILITY FUNCTION TO BLACKLIST ALL USER TOKENS ================
+const blacklistAllUserTokens = async (userId, reason = 'USER_DELETED') => {
+    try {
+        // Since we don't track active tokens per user, we'll create a general blacklist entry
+        // that will be checked against the user ID in the token payload
+        
+        // Create a placeholder token entry that represents all tokens for this user
+        // We'll use a special format that the auth middleware can recognize
+        const userTokenIdentifier = `USER_${userId}_ALL_TOKENS`;
+        
+        // Set expiration to 30 days from now (typical JWT expiration)
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 30);
+        
+        await TokenBlacklist.create({
+            token: userTokenIdentifier,
+            userId: userId,
+            reason: reason,
+            expiresAt: expirationDate
+        });
+        
+        console.log(`✅ Created blacklist entry for all tokens of user: ${userId}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error creating token blacklist entry:', error);
+        throw error;
     }
 };

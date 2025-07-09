@@ -338,7 +338,7 @@ const Home = () => {
                 className='flex flex-col gap-4 sm:gap-6 lg:gap-10 w-full lg:w-[40%] items-center lg:items-start text-center lg:text-left'
               >
                 <div className='text-sm sm:text-base lg:text-[16px] leading-relaxed text-richblack-600 max-w-md lg:max-w-none'>
-                  The modern StudyNotion dictates its own terms. Today, to be a competitive specialist requires more than professional skills.
+                  The modern BeejaAcademy dictates its own terms. Today, to be a competitive specialist requires more than professional skills.
                 </div>
                 <motion.div
                   whileHover={{ scale: 1.05 }}

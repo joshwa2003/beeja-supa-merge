@@ -1,12 +1,13 @@
 // AUTH , IS STUDENT , IS INSTRUCTOR , IS ADMIN
 
 const jwt = require("jsonwebtoken");
+const TokenBlacklist = require('../models/tokenBlacklist');
 require('dotenv').config();
 
 
 // ================ AUTH ================
 // user Authentication by checking token validating
-exports.auth = (req, res, next) => {
+exports.auth = async (req, res, next) => {
     try {
         console.log('=== AUTH MIDDLEWARE START ===');
         console.log('Auth middleware called for:', req.method, req.url);
@@ -34,6 +35,50 @@ exports.auth = (req, res, next) => {
             });
         }
 
+        // Check if token is blacklisted
+        try {
+            console.log('Checking if token is blacklisted...');
+            
+            // First decode the token to get user ID (without verification)
+            let userId = null;
+            try {
+                const decoded = jwt.decode(token);
+                userId = decoded?.id;
+            } catch (decodeError) {
+                console.log('Could not decode token for blacklist check');
+            }
+            
+            // Check for specific token blacklist
+            const blacklistedToken = await TokenBlacklist.findOne({ token });
+            if (blacklistedToken) {
+                console.log('❌ Specific token is blacklisted');
+                return res.status(401).json({
+                    success: false,
+                    message: 'Token has been invalidated. Please login again.',
+                    reason: 'TOKEN_BLACKLISTED'
+                });
+            }
+            
+            // Check for user-wide token blacklist (when user is deleted/suspended)
+            if (userId) {
+                const userTokenIdentifier = `USER_${userId}_ALL_TOKENS`;
+                const userBlacklisted = await TokenBlacklist.findOne({ token: userTokenIdentifier });
+                if (userBlacklisted) {
+                    console.log('❌ All tokens for user are blacklisted - user was deleted/suspended');
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Your account has been deactivated. Please contact support.',
+                        reason: 'USER_DEACTIVATED'
+                    });
+                }
+            }
+            
+            console.log('✅ Token is not blacklisted');
+        } catch (error) {
+            console.log('❌ Error checking token blacklist:', error.message);
+            // Continue with token verification even if blacklist check fails
+        }
+
         // verify token
         try {
             console.log('Verifying token...');
@@ -43,6 +88,35 @@ exports.auth = (req, res, next) => {
                 accountType: decode.accountType,
                 id: decode.id
             });
+            
+            // Additional check: Verify if user is still active in database
+            try {
+                const User = require('../models/user');
+                const currentUser = await User.findById(decode.id);
+                
+                if (!currentUser) {
+                    console.log('❌ User not found in database');
+                    return res.status(401).json({
+                        success: false,
+                        message: 'User account not found. Please login again.',
+                        reason: 'USER_NOT_FOUND'
+                    });
+                }
+                
+                if (!currentUser.active) {
+                    console.log('❌ User account is inactive/deleted');
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Your account has been deactivated. Please contact support.',
+                        reason: 'USER_DEACTIVATED'
+                    });
+                }
+                
+                console.log('✅ User is active in database');
+            } catch (dbError) {
+                console.log('❌ Error checking user status in database:', dbError.message);
+                // Continue with normal flow if database check fails
+            }
             
             req.user = decode;
             console.log('✅ User set in request object');

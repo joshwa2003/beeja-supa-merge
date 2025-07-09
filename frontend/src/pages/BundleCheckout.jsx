@@ -96,16 +96,16 @@ function BundleCheckout() {
       }
     } else if (paidCourses.length > 0 && freeCourses.length === 0) {
       // Scenario 2: All courses are paid - check payment requirement
-      if (finalPrice !== 0) {
-        toast.error("First pay the course amount.")
+      if (finalPrice !== 0 && finalPrice !== null) {
+        toast.error("You have to pay first")
         return
       }
       // Proceed with payment for all paid courses
       buyCourse(token, paidCourseIds, user, navigate, dispatch)
     } else if (paidCourses.length > 0 && freeCourses.length > 0) {
       // Scenario 3: Mixed bundle (paid + free courses)
-      if (finalPrice !== 0) {
-        toast.error("First pay the course amount.")
+      if (finalPrice !== 0 && finalPrice !== null) {
+        toast.error("You have to pay first")
         return
       }
       

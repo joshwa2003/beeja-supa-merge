@@ -50,7 +50,7 @@ export default function CleanInternshipCertificate({ certificateData }) {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        opacity: '0.10',
+        opacity: '0.19',
         zIndex: '1',
         display: 'flex',
         flexDirection: 'column',
@@ -73,7 +73,8 @@ export default function CleanInternshipCertificate({ certificateData }) {
           color: '#111827',
           userSelect: 'none',
           textAlign: 'center',
-          letterSpacing: '0.1em'
+          letterSpacing: '0.1em',
+          opacity: '0.20',
         }}>
           Beeja Academy
         </div>
@@ -272,7 +273,7 @@ export default function CleanInternshipCertificate({ certificateData }) {
           letterSpacing: '0.1em',
           textTransform: 'uppercase'
         }}>
-          THIS CERTIFICATE IS PRESENTED TO
+          This certificate is awarded to
         </div>
 
         <div style={{
@@ -298,7 +299,7 @@ export default function CleanInternshipCertificate({ certificateData }) {
           maxWidth: '600px',
           margin: '0 auto'
         }}>
-          has successfully completed online training on<br/>
+          in recognition of completing a comprehensive online training<br/>
           <span style={{
             fontFamily: "'Roboto Slab', 'Merriweather', serif",
             fontWeight: '600',
@@ -309,7 +310,7 @@ export default function CleanInternshipCertificate({ certificateData }) {
           }}>
             {certificateData?.categoryName || certificateData?.courseId?.category?.name || 'General'}
           </span><br/>
-          and real-time project training on<br/>
+          and gaining practical experience through real-time project<br/>
           <span style={{
             fontFamily: "'Roboto Slab', 'Merriweather', serif",
             fontWeight: '600',

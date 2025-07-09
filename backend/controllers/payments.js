@@ -86,17 +86,44 @@ exports.verifyPayment = async (req, res) => {
             throw new Error("One or more courses not found");
         }
 
+        // Calculate final amounts for each course
+        const totalOriginalPrice = courses.reduce((sum, course) => sum + (course.price || 0), 0);
+        const totalDiscountAmount = discountAmount || 0;
+        const finalAmount = Math.max(0, totalOriginalPrice - totalDiscountAmount);
+        
         // Create order records for each course with active status
-        const orderPromises = courses.map(course => {
-            return Order.create({
+        const orderPromises = courses.map((course, index) => {
+            // Calculate proportional discount for each course if multiple courses
+            const courseOriginalPrice = course.price || 0;
+            const courseDiscountAmount = courses.length > 1 
+                ? Math.round((courseOriginalPrice / totalOriginalPrice) * totalDiscountAmount)
+                : totalDiscountAmount;
+            const courseFinalAmount = Math.max(0, courseOriginalPrice - courseDiscountAmount);
+
+            const orderData = {
                 user: userId,
                 course: course._id,
-                amount: course.price || 0,
+                amount: courseFinalAmount,
+                originalPrice: courseOriginalPrice,
+                discountAmount: courseDiscountAmount,
                 status: true, // Set as active by default
                 paymentMethod: 'test', // Default payment method for testing
                 transactionId: `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 purchaseDate: new Date()
-            });
+            };
+
+            // Only add coupon information if coupon was actually used and has discount
+            if (couponCode && courseDiscountAmount > 0) {
+                orderData.couponUsed = {
+                    code: couponCode,
+                    discountType: 'flat', // Assuming flat discount for now
+                    discountValue: courseDiscountAmount,
+                    discountAmount: courseDiscountAmount
+                };
+            }
+            // If no coupon used, don't include couponUsed field at all to avoid validation errors
+
+            return Order.create(orderData);
         });
 
         const orders = await Promise.all(orderPromises);
@@ -159,30 +186,57 @@ exports.getPurchaseHistory = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Find the user and populate their purchased courses
-        const user = await User.findById(userId)
+        // Find all orders for the user and populate course and user details
+        const orders = await Order.find({ user: userId, status: true })
             .populate({
-                path: 'courses',
+                path: 'course',
                 model: 'Course',
-                select: 'courseName price description thumbnail createdAt'
-            });
+                select: 'courseName description thumbnail instructor',
+                populate: {
+                    path: 'instructor',
+                    model: 'User',
+                    select: 'firstName lastName email'
+                }
+            })
+            .populate({
+                path: 'user',
+                model: 'User',
+                select: 'firstName lastName email additionalDetails',
+                populate: {
+                    path: 'additionalDetails',
+                    model: 'Profile',
+                    select: 'contactNumber'
+                }
+            })
+            .sort({ purchaseDate: -1 });
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
+        if (!orders || orders.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: [],
+                message: "No purchase history found"
             });
         }
 
-        // Transform the courses data to include purchase details
-        const purchaseHistory = user.courses.map(course => ({
-            _id: course._id,
-            courseName: course.courseName,
-            courseDescription: course.description,
-            thumbnail: course.thumbnail,
-            price: course.price || 0,
-            purchaseDate: course.createdAt,
-            status: "Completed"
+        // Transform the orders data to include all necessary details for invoices
+        const purchaseHistory = orders.map(order => ({
+            _id: order._id,
+            courseName: order.course?.courseName || 'N/A',
+            courseDescription: order.course?.description || '',
+            thumbnail: order.course?.thumbnail || '',
+            price: order.amount || 0,
+            originalPrice: order.originalPrice || order.amount || 0,
+            discountAmount: order.discountAmount || 0,
+            purchaseDate: order.purchaseDate,
+            status: "Completed",
+            // Order details for invoice
+            transactionId: order.transactionId,
+            paymentMethod: order.paymentMethod,
+            // Coupon information
+            couponUsed: order.couponUsed || null,
+            // Course and user details for invoice
+            course: order.course,
+            user: order.user
         }));
 
         return res.status(200).json({

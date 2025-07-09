@@ -11,6 +11,9 @@ const store = configureStore({
   reducer: rootReducer
 });
 
+// Make store available globally for the API interceptor
+window.__REDUX_STORE__ = store;
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <Provider store={store}>

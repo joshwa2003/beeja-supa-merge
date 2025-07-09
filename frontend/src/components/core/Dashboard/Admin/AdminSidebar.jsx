@@ -23,8 +23,8 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
   const sidebarItems = [
     { id: 'analytics', label: 'Analytics', icon: <FaChartBar size={16} /> },
     { id: 'users', label: 'Users', icon: <FaUsers size={16} /> },
-    { id: 'courses', label: 'Courses', icon: <FaBookOpen size={16} /> },
     { id: 'categories', label: 'Course Categories', icon: <VscSymbolClass size={16} /> },
+    { id: 'courses', label: 'Courses', icon: <FaBookOpen size={16} /> },
     { id: 'studentProgress', label: 'Student Progress', icon: <FaChartLine size={16} /> },
     { id: 'quizzes', label: 'Quiz Management', icon: <FaQuestionCircle size={16} /> },
     { id: 'featuredCourses', label: 'Featured Courses', icon: <FaStar size={16} /> },

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
+import toast from "react-hot-toast"
 
 import IconBtn from "../../../common/IconBtn"
 import CouponInput from "./CouponInput"
@@ -30,6 +31,12 @@ export default function RenderTotalAmount() {
   }
 
   const handleBuyCourse = async () => {
+    // Check if total amount is not zero - prevent purchase and show message
+    if (finalAmount !== 0 && finalAmount !== null) {
+      toast.error("You have to pay first")
+      return
+    }
+    
     const courses = cart.map((course) => course._id)
     await buyCourse(token, courses, user, navigate, dispatch)
   }

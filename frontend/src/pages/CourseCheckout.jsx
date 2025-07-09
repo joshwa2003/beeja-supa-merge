@@ -55,15 +55,15 @@ function CourseCheckout() {
   const handleBuyCourse = () => {
     const finalPrice = getFinalPrice()
     
-    // Check if total amount is not zero - prevent purchase and show popup
-    if (finalPrice !== 0) {
-      toast.error("First pay the course amount.")
+    // Check if total amount is not zero - prevent purchase and show message
+    if (finalPrice !== 0 && finalPrice !== null) {
+      toast.error("You have to pay first")
       return
     }
     
     const coursesId = [course._id]
     
-    // Only proceed if total amount is 0
+    // Only proceed if total amount is 0 or null
     buyCourse(token, coursesId, user, navigate, dispatch, appliedCoupon)
   }
 

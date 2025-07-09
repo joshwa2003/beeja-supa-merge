@@ -118,11 +118,15 @@ const CourseManagement = () => {
       setTogglingCourseId(courseId);
       const response = await toggleCourseVisibility(courseId, token);
       if (response) {
-        // Optimistic update - update local state immediately
+        // Optimistic update - update local state immediately with both isVisible and status
         setCourses(prevCourses => 
           prevCourses.map(course => 
             course._id === courseId 
-              ? { ...course, isVisible: !course.isVisible }
+              ? { 
+                  ...course, 
+                  isVisible: !course.isVisible,
+                  status: !course.isVisible ? 'Published' : 'Draft'
+                }
               : course
           )
         );

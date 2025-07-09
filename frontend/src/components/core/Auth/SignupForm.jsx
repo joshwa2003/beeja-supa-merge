@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "react-hot-toast"
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"
 import { useDispatch } from "react-redux"
@@ -28,8 +28,32 @@ function SignupForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState("");
 
   const { firstName, lastName, email, password, confirmPassword } = formData;
+
+  // Check password strength
+  useEffect(() => {
+    if (password.length === 0) {
+      setPasswordStrength("")
+    } else {
+      const hasLower = /[a-z]/.test(password)
+      const hasUpper = /[A-Z]/.test(password)
+      const hasNumber = /\d/.test(password)
+      const hasSpecial = /[@$!%*?&]/.test(password)
+      const isLongEnough = password.length >= 8
+
+      if (!isLongEnough) {
+        setPasswordStrength("weak")
+      } else if (hasLower && hasUpper && hasNumber && hasSpecial) {
+        setPasswordStrength("strong")
+      } else if ((hasLower || hasUpper) && hasNumber) {
+        setPasswordStrength("medium")
+      } else {
+        setPasswordStrength("weak")
+      }
+    }
+  }, [password])
 
   // Handle input fields, when some value changes
   const handleOnChange = (e) => {
@@ -44,6 +68,18 @@ function SignupForm() {
   // Handle Form Submission
   const handleOnSubmit = (e) => {
     e.preventDefault();
+
+    // Validate password length
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters long")
+      return;
+    }
+
+    // Check password strength
+    if (passwordStrength === "weak") {
+      toast.error("Please choose a stronger password")
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast.error("Passwords Do Not Match")
@@ -87,6 +123,35 @@ function SignupForm() {
       type: ACCOUNT_TYPE.INSTRUCTOR,
     },
   ];
+
+  const getPasswordStrengthColor = () => {
+    switch (passwordStrength) {
+      case "weak": return "text-red-500"
+      case "medium": return "text-yellow-500"
+      case "strong": return "text-green-500"
+      default: return ""
+    }
+  }
+
+  const getPasswordStrengthText = () => {
+    switch (passwordStrength) {
+      case "weak": return "Weak - Add more characters and complexity"
+      case "medium": return "Medium - Add special characters for better security"
+      case "strong": return "Strong password ✓"
+      default: return ""
+    }
+  }
+
+  const getPasswordRequirements = () => {
+    const requirements = [
+      { text: "At least 8 characters", met: password.length >= 8 },
+      { text: "One lowercase letter", met: /[a-z]/.test(password) },
+      { text: "One uppercase letter", met: /[A-Z]/.test(password) },
+      { text: "One number", met: /\d/.test(password) },
+      { text: "One special character (@$!%*?&)", met: /[@$!%*?&]/.test(password) },
+    ]
+    return requirements
+  }
 
   return (
     <div>
@@ -215,10 +280,39 @@ function SignupForm() {
           </label>
         </div>
 
+        {confirmPassword && password !== confirmPassword && (
+          <p className="text-red-500 text-sm">Passwords do not match</p>
+        )}
+
+        {password && (
+          <div className="mt-2">
+            <p className={`text-sm mb-2 ${getPasswordStrengthColor()}`}>
+              {getPasswordStrengthText()}
+            </p>
+            <div className="space-y-1">
+              {getPasswordRequirements().map((req, index) => (
+                <div key={index} className="flex items-center text-xs">
+                  <span className={`mr-2 ${req.met ? 'text-green-500' : 'text-richblack-400'}`}>
+                    {req.met ? '✓' : '○'}
+                  </span>
+                  <span className={req.met ? 'text-green-500' : 'text-richblack-400'}>
+                    {req.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
 
         <button
           type="submit"
-          className="mt-6 rounded-[8px] bg-yellow-50 py-[8px] px-[12px] font-medium text-richblack-900"
+          disabled={passwordStrength === "weak" || password !== confirmPassword || password.length < 8}
+          className={`mt-6 rounded-[8px] py-[8px] px-[12px] font-medium transition-all duration-200
+            ${passwordStrength === "weak" || password !== confirmPassword || password.length < 8
+              ? 'bg-richblack-500 text-richblack-300 cursor-not-allowed'
+              : 'bg-yellow-50 text-richblack-900 hover:bg-yellow-100'
+            }`}
         >
           Create Account
         </button>

@@ -1,4 +1,5 @@
 import axios from "axios"
+import { toast } from "react-hot-toast"
 
 export const axiosInstance = axios.create({
     withCredentials: true,
@@ -6,6 +7,53 @@ export const axiosInstance = axios.create({
         'Accept': 'application/json'
     }
 });
+
+// Add response interceptor to handle authentication errors
+axiosInstance.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    async (error) => {
+        // Check if the error is due to user deactivation
+        if (error.response?.status === 401) {
+            const errorData = error.response.data;
+            
+            // Handle specific deactivation cases
+            if (errorData?.reason === 'USER_DEACTIVATED' || 
+                errorData?.reason === 'TOKEN_BLACKLISTED' ||
+                errorData?.reason === 'USER_NOT_FOUND') {
+                
+                console.log('User account deactivated or token blacklisted - forcing logout');
+                
+                // Show appropriate message
+                toast.error(errorData.message || 'Your account has been deactivated. Please contact support.');
+                
+                // Clear local storage and Redux state
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                
+                // Dispatch clearAuth action to Redux store if available
+                try {
+                    // Get the store instance (this will be set up in the main app)
+                    const store = window.__REDUX_STORE__;
+                    if (store) {
+                        const { clearAuth } = await import('../slices/authSlice');
+                        store.dispatch(clearAuth());
+                    }
+                } catch (reduxError) {
+                    console.log('Could not clear Redux state:', reduxError.message);
+                }
+                
+                // Force page reload to ensure complete logout
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            }
+        }
+        
+        return Promise.reject(error);
+    }
+);
 
 export const apiConnector = (method, url, bodyData, headers, params, config = {}) => {
     // Debug logging

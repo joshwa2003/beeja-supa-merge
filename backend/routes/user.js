@@ -39,6 +39,15 @@ router.post('/sendotp', sendOTP);
 // Route for Changing the password
 router.post('/changepassword', auth, changePassword);
 
+// Route for verifying token (used by auth checker)
+router.get('/verify-token', auth, (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Token is valid',
+    user: req.user
+  });
+});
+
 
 
 // ********************************************************************************************************
