@@ -7,6 +7,14 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const Notification = require('../models/notification');
 const UserNotificationStatus = require('../models/userNotificationStatus');
+const AdminSectionViews = require('../models/adminSectionViews');
+const RatingAndReview = require('../models/ratingAndReview');
+const CourseAccessRequest = require('../models/courseAccessRequest');
+const BundleAccessRequest = require('../models/bundleAccessRequest');
+const ContactMessage = require('../models/contactMessage');
+const JobApplication = require('../models/jobApplication');
+const FAQ = require('../models/faq');
+const Chat = require('../models/chat');
 const { convertSecondsToDuration } = require('../utils/secToDuration');
 const { 
     createInstructorApprovalNotification,
@@ -1491,6 +1499,206 @@ exports.createCourseAsAdmin = async (req, res) => {
             success: false,
             message: 'Internal server error while creating course',
             error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+        });
+    }
+};
+
+// ================ GET NOTIFICATION COUNTS ================
+exports.getNotificationCounts = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+
+        // Get admin's section views or create if doesn't exist
+        let adminViews = await AdminSectionViews.findOne({ adminId });
+        if (!adminViews) {
+            adminViews = await AdminSectionViews.create({
+                adminId,
+                sectionViews: {}
+            });
+        }
+
+        const counts = {};
+        const now = new Date();
+
+        // Get reviews count (new reviews since last seen)
+        const reviewsLastSeen = adminViews.sectionViews.reviews?.lastSeenAt || new Date(0);
+        counts.reviews = await RatingAndReview.countDocuments({
+            createdAt: { $gt: reviewsLastSeen }
+        });
+
+        // Get access requests count (only pending requests or new ones since last seen)
+        const accessRequestsLastSeen = adminViews.sectionViews.accessRequests?.lastSeenAt || new Date(0);
+        counts.accessRequests = await CourseAccessRequest.countDocuments({
+            $or: [
+                { status: 'Pending' },
+                { 
+                    createdAt: { $gt: accessRequestsLastSeen }, 
+                    status: { $ne: 'Rejected' } 
+                }
+            ]
+        });
+
+        // Get bundle requests count (only pending requests or new ones since last seen)
+        const bundleRequestsLastSeen = adminViews.sectionViews.bundleRequests?.lastSeenAt || new Date(0);
+        counts.bundleRequests = await BundleAccessRequest.countDocuments({
+            $or: [
+                { status: 'Pending' },
+                { 
+                    createdAt: { $gt: bundleRequestsLastSeen }, 
+                    status: { $ne: 'Rejected' } 
+                }
+            ]
+        });
+
+        // Get careers count (new job applications since last seen)
+        const careersLastSeen = adminViews.sectionViews.careers?.lastSeenAt || new Date(0);
+        counts.careers = await JobApplication.countDocuments({
+            createdAt: { $gt: careersLastSeen }
+        });
+
+        // Get notifications count (new notifications since last seen)
+        const notificationsLastSeen = adminViews.sectionViews.notifications?.lastSeenAt || new Date(0);
+        counts.notifications = await Notification.countDocuments({
+            recipient: adminId,
+            createdAt: { $gt: notificationsLastSeen }
+        });
+
+        // Get contact messages count (new unread messages since last seen)
+        const contactMessagesLastSeen = adminViews.sectionViews.contactMessages?.lastSeenAt || new Date(0);
+        counts.contactMessages = await ContactMessage.countDocuments({
+            createdAt: { $gt: contactMessagesLastSeen }
+        });
+
+        // Get FAQs count (new unanswered FAQs since last seen)
+        const faqsLastSeen = adminViews.sectionViews.faqs?.lastSeenAt || new Date(0);
+        counts.faqs = await FAQ.countDocuments({
+            createdAt: { $gt: faqsLastSeen },
+            status: 'pending'
+        });
+
+        // Get chats count (only new chats or chats with new messages from non-admin users since last seen)
+        const chatsLastSeen = adminViews.sectionViews.chats?.lastSeenAt || new Date(0);
+        
+        // Use aggregation to find chats with new activity from non-admin users
+        const Message = require('../models/message');
+        const User = require('../models/user');
+        
+        // Get chats with new messages from STUDENTS ONLY since last seen
+        const chatsWithNewMessages = await Message.aggregate([
+            {
+                $match: {
+                    createdAt: { $gt: chatsLastSeen }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'sender',
+                    foreignField: '_id',
+                    as: 'senderInfo'
+                }
+            },
+            {
+                $match: {
+                    'senderInfo.accountType': 'Student'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'chats',
+                    localField: 'chat',
+                    foreignField: '_id',
+                    as: 'chatInfo'
+                }
+            },
+            {
+                $match: {
+                    'chatInfo.isActive': true
+                }
+            },
+            {
+                $group: {
+                    _id: '$chat'
+                }
+            },
+            {
+                $count: 'totalChats'
+            }
+        ]);
+        
+        // Get count of new chats created since last seen
+        const newChatsCount = await Chat.countDocuments({
+            isActive: true,
+            createdAt: { $gt: chatsLastSeen }
+        });
+        
+        // Combine both counts
+        const chatsWithNewMessagesCount = chatsWithNewMessages.length > 0 ? chatsWithNewMessages[0].totalChats : 0;
+        counts.chats = newChatsCount + chatsWithNewMessagesCount;
+
+        console.log('Notification counts calculated:', {
+            adminId,
+            chatsLastSeen,
+            chatsCount: counts.chats,
+            timestamp: now
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: counts,
+            message: 'Notification counts fetched successfully'
+        });
+
+    } catch (error) {
+        console.error('Error fetching notification counts:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching notification counts',
+            error: error.message
+        });
+    }
+};
+
+// ================ MARK SECTION AS SEEN ================
+exports.markSectionAsSeen = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { sectionId } = req.params;
+
+        // Validate section ID
+        const validSections = [
+            'reviews', 'accessRequests', 'bundleRequests', 'careers',
+            'notifications', 'contactMessages', 'faqs', 'chats'
+        ];
+
+        if (!validSections.includes(sectionId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid section ID'
+            });
+        }
+
+        // Update or create admin section views
+        const updateQuery = {};
+        updateQuery[`sectionViews.${sectionId}.lastSeenAt`] = new Date();
+
+        await AdminSectionViews.findOneAndUpdate(
+            { adminId },
+            { $set: updateQuery },
+            { upsert: true, new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: `Section ${sectionId} marked as seen successfully`
+        });
+
+    } catch (error) {
+        console.error('Error marking section as seen:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error marking section as seen',
+            error: error.message
         });
     }
 };

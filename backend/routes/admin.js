@@ -18,7 +18,9 @@ const {
     getAllInstructors,
     sendNotification,
     getAllNotifications,
-    deleteNotification
+    deleteNotification,
+    getNotificationCounts,
+    markSectionAsSeen
 } = require('../controllers/admin');
 const { 
     createCoupon, 
@@ -86,6 +88,8 @@ router.get('/orders/course/:courseId', auth, getOrderByCourse);
 router.post('/notifications/send', auth, isAdmin, sendNotification);
 router.get('/notifications', auth, isAdmin, getAllNotifications);
 router.delete('/notifications/:notificationId', auth, isAdmin, deleteNotification);
+router.get('/notification-counts', auth, isAdmin, getNotificationCounts);
+router.post('/mark-section-seen/:sectionId', auth, isAdmin, markSectionAsSeen);
 
 // ================ REVIEW MANAGEMENT ROUTES ================
 router.get('/reviews', auth, isAdmin, getAllReviewsForAdmin);

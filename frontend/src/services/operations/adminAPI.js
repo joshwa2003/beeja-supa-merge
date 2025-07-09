@@ -22,6 +22,8 @@ const {
   TOGGLE_REVIEW_SELECTION_API,
   BULK_UPDATE_REVIEW_SELECTION_API,
   DELETE_REVIEW_API,
+  GET_NOTIFICATION_COUNTS_API,
+  MARK_SECTION_SEEN_API,
 } = adminEndpoints
 
 const {
@@ -923,6 +925,83 @@ export const deleteCategory = async (categoryId, token) => {
     throw error
   } finally {
     toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Get Notification Counts ================
+export const getNotificationCounts = async (token) => {
+  let result = null
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    const response = await apiConnector("GET", GET_NOTIFICATION_COUNTS_API, null, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("GET_NOTIFICATION_COUNTS_API Response:", response)
+    
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Fetch Notification Counts")
+    }
+    
+    if (!response?.data?.data) {
+      throw new Error("No notification counts data received")
+    }
+    
+    result = response.data.data
+    console.log("Fetched notification counts:", result)
+  } catch (error) {
+    console.error("GET_NOTIFICATION_COUNTS_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    // Don't show toast error for this as it's a background operation
+    throw error
+  }
+  
+  return result
+}
+
+// ================ Mark Section As Seen ================
+export const markSectionAsSeen = async (sectionId, token) => {
+  let result = false
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    if (!sectionId) {
+      throw new Error("Section ID is required")
+    }
+
+    const url = MARK_SECTION_SEEN_API.replace(':sectionId', sectionId)
+    
+    const response = await apiConnector("POST", url, {}, {
+      Authorization: `Bearer ${token}`,
+    })
+    
+    console.log("MARK_SECTION_SEEN_API RESPONSE............", response)
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Mark Section As Seen")
+    }
+
+    result = true
+  } catch (error) {
+    console.error("MARK_SECTION_SEEN_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    // Don't show toast error for this as it's a background operation
+    throw error
   }
   
   return result

@@ -8,38 +8,75 @@ import { HiMenuAlt1 } from 'react-icons/hi';
 import { IoMdClose } from 'react-icons/io';
 import { useNavigate } from "react-router-dom";
 import { toggleSidebarCollapse, setOpenSideMenu, setScreenSize } from '../../../../slices/sidebarSlice';
+import { setNotificationCounts, clearNotificationCount } from '../../../../slices/adminNotificationSlice';
 import { logout } from "../../../../services/operations/authAPI";
+import { getNotificationCounts, markSectionAsSeen } from "../../../../services/operations/adminAPI";
 import ConfirmationModal from "../../../common/ConfirmationModal";
+import NotificationBadge from "../../../common/NotificationBadge";
 
 const AdminSidebar = ({ activeTab, onTabChange }) => {
   const { isCollapsed, openSideMenu, screenSize } = useSelector((state) => state.sidebar);
   const { user, loading: profileLoading } = useSelector((state) => state.profile);
+  const { token } = useSelector((state) => state.auth);
   const { loading: authLoading } = useSelector((state) => state.auth);
+  const { notificationCounts } = useSelector((state) => state.adminNotification);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [confirmationModal, setConfirmationModal] = useState(null);
 
-  // Sidebar navigation items
+  // Sidebar navigation items with notification mapping
   const sidebarItems = [
-    { id: 'analytics', label: 'Analytics', icon: <FaChartBar size={16} /> },
-    { id: 'users', label: 'Users', icon: <FaUsers size={16} /> },
-    { id: 'categories', label: 'Course Categories', icon: <VscSymbolClass size={16} /> },
-    { id: 'courses', label: 'Courses', icon: <FaBookOpen size={16} /> },
-    { id: 'studentProgress', label: 'Student Progress', icon: <FaChartLine size={16} /> },
-    { id: 'quizzes', label: 'Quiz Management', icon: <FaQuestionCircle size={16} /> },
-    { id: 'featuredCourses', label: 'Featured Courses', icon: <FaStar size={16} /> },
-    { id: 'reviews', label: 'Review', icon: <FaSmile size={16} /> },
-    { id: 'accessRequests', label: 'Access Requests', icon: <FaUsers size={16} /> },
-    { id: 'bundleRequests', label: 'Bundle Requests', icon: <VscGitPullRequestCreate size={16} /> },
-    { id: 'orders', label: 'Orders', icon: <VscPackage size={16} /> },
-    { id: 'coupons', label: 'Coupons', icon: <FaTag size={16} /> },
-    { id: 'careers', label: 'Careers', icon: <FaBriefcase size={16} /> },
-    { id: 'notifications', label: 'Notifications', icon: <FiBell size={16} /> },
-    { id: 'contactMessages', label: 'Contact Messages', icon: <FaEnvelope size={16} /> },
-    { id: 'faqs', label: 'FAQ Management', icon: <FaComments size={16} /> },
-    { id: 'chats', label: 'Manage Chats', icon: <FaCommentDots size={16} /> },
-    { id: 'recycleBin', label: 'Recycle Bin', icon: <FaTrash size={16} /> },
+    { id: 'analytics', label: 'Analytics', icon: <FaChartBar size={16} />, notificationKey: null },
+    { id: 'users', label: 'Users', icon: <FaUsers size={16} />, notificationKey: null },
+    { id: 'categories', label: 'Course Categories', icon: <VscSymbolClass size={16} />, notificationKey: null },
+    { id: 'courses', label: 'Courses', icon: <FaBookOpen size={16} />, notificationKey: null },
+    { id: 'studentProgress', label: 'Student Progress', icon: <FaChartLine size={16} />, notificationKey: null },
+    { id: 'quizzes', label: 'Quiz Management', icon: <FaQuestionCircle size={16} />, notificationKey: null },
+    { id: 'featuredCourses', label: 'Featured Courses', icon: <FaStar size={16} />, notificationKey: null },
+    { id: 'reviews', label: 'Review', icon: <FaSmile size={16} />, notificationKey: 'reviews' },
+    { id: 'accessRequests', label: 'Access Requests', icon: <FaUsers size={16} />, notificationKey: 'accessRequests' },
+    { id: 'bundleRequests', label: 'Bundle Requests', icon: <VscGitPullRequestCreate size={16} />, notificationKey: 'bundleRequests' },
+    { id: 'orders', label: 'Orders', icon: <VscPackage size={16} />, notificationKey: null },
+    { id: 'coupons', label: 'Coupons', icon: <FaTag size={16} />, notificationKey: null },
+    { id: 'careers', label: 'Careers', icon: <FaBriefcase size={16} />, notificationKey: 'careers' },
+    { id: 'notifications', label: 'Notifications', icon: <FiBell size={16} />, notificationKey: 'notifications' },
+    { id: 'contactMessages', label: 'Contact Messages', icon: <FaEnvelope size={16} />, notificationKey: 'contactMessages' },
+    { id: 'faqs', label: 'FAQ Management', icon: <FaComments size={16} />, notificationKey: 'faqs' },
+    { id: 'chats', label: 'Manage Chats', icon: <FaCommentDots size={16} />, notificationKey: 'chats' },
+    { id: 'recycleBin', label: 'Recycle Bin', icon: <FaTrash size={16} />, notificationKey: null },
   ];
+
+  // Fetch notification counts
+  const fetchNotificationCounts = async () => {
+    if (!token || !user || user.accountType !== 'Admin') return;
+    
+    try {
+      const counts = await getNotificationCounts(token);
+      dispatch(setNotificationCounts(counts));
+    } catch (error) {
+      console.error('Error fetching notification counts:', error);
+    }
+  };
+
+  // Handle section click
+  const handleSectionClick = async (sectionId) => {
+    // Mark section as seen if it has notifications
+    const item = sidebarItems.find(item => item.id === sectionId);
+    if (item?.notificationKey) {
+      try {
+        // Always mark as seen when clicking, regardless of current count
+        await markSectionAsSeen(item.notificationKey, token);
+        dispatch(clearNotificationCount(item.notificationKey));
+        
+        console.log(`Section ${item.notificationKey} marked as seen`);
+      } catch (error) {
+        console.error('Error marking section as seen:', error);
+      }
+    }
+    
+    // Call the original onTabChange
+    onTabChange(sectionId);
+  };
 
   useEffect(() => {
     const handleResize = () => dispatch(setScreenSize(window.innerWidth));
@@ -56,6 +93,30 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
       dispatch(setOpenSideMenu(true));
     }
   }, [screenSize, dispatch]);
+
+  // Fetch notification counts on component mount and periodically
+  useEffect(() => {
+    if (user?.accountType === 'Admin' && token) {
+      console.log('AdminSidebar: Fetching initial notification counts');
+      fetchNotificationCounts();
+      
+      // Set up periodic refresh every 30 seconds
+      const interval = setInterval(() => {
+        console.log('AdminSidebar: Periodic notification count refresh');
+        fetchNotificationCounts();
+      }, 30000);
+      
+      return () => {
+        console.log('AdminSidebar: Cleaning up notification interval');
+        clearInterval(interval);
+      };
+    }
+  }, [user, token]);
+
+  // Debug notification counts changes
+  useEffect(() => {
+    console.log('AdminSidebar: Notification counts updated:', notificationCounts);
+  }, [notificationCounts]);
 
   if (profileLoading || authLoading) {
     return (
@@ -139,7 +200,7 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
                   {sidebarItems.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => onTabChange(item.id)}
+                      onClick={() => handleSectionClick(item.id)}
                       className={`w-full flex items-center ${
                         isCollapsed ? 'justify-center px-1' : 'gap-2 px-3'
                       } py-2 rounded-lg transition-colors duration-200 group relative ${
@@ -149,8 +210,23 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
                       }`}
                       title={isCollapsed ? item.label : ""}
                     >
-                      <span className="text-sm">{item.icon}</span>
-                      {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}
+                      <div className="relative">
+                        <span className="text-sm">{item.icon}</span>
+                        {/* Notification Badge for collapsed sidebar - positioned on icon */}
+                        {isCollapsed && item.notificationKey && notificationCounts[item.notificationKey] > 0 && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-caribbeangreen-400 rounded-full border-2 border-richblack-800" />
+                        )}
+                      </div>
+                      {!isCollapsed && (
+                        <div className="flex items-center justify-between flex-1">
+                          <span className="font-medium text-sm">{item.label}</span>
+                        </div>
+                      )}
+                      
+                      {/* Notification Badge for expanded sidebar - positioned at top-right of button */}
+                      {!isCollapsed && item.notificationKey && notificationCounts[item.notificationKey] > 0 && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-caribbeangreen-400 rounded-full border-2 border-richblack-800" />
+                      )}
                       
                       {/* Tooltip for collapsed state */}
                       {isCollapsed && (

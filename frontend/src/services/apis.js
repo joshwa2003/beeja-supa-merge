@@ -141,6 +141,8 @@ export const adminEndpoints = {
   SEND_NOTIFICATION_API: BASE_URL + "/api/v1/admin/notifications/send",
   GET_ALL_NOTIFICATIONS_API: BASE_URL + "/api/v1/admin/notifications",
   DELETE_NOTIFICATION_API: BASE_URL + "/api/v1/admin/notifications/:notificationId",
+  GET_NOTIFICATION_COUNTS_API: BASE_URL + "/api/v1/admin/notification-counts",
+  MARK_SECTION_SEEN_API: BASE_URL + "/api/v1/admin/mark-section-seen/:sectionId",
 
   // Review Management
   GET_ALL_REVIEWS_ADMIN_API: BASE_URL + "/api/v1/admin/reviews",
