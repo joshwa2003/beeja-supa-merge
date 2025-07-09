@@ -124,8 +124,10 @@ exports.moveToRecycleBin = async (req, res) => {
                 }
                 break;
             case 'Category':
-                // For categories, we'll just mark them in recycle bin
-                // The actual deletion logic can be handled separately
+                // For categories, mark them as deleted
+                await Category.findByIdAndUpdate(itemId, { 
+                    isDeleted: true 
+                });
                 break;
         }
 
@@ -188,8 +190,10 @@ exports.restoreFromRecycleBin = async (req, res) => {
                 }
                 break;
             case 'Category':
-                // Restore category if it was soft deleted
-                // Implementation depends on how categories are handled
+                // Restore category by setting isDeleted to false
+                await Category.findByIdAndUpdate(originalId, {
+                    isDeleted: false
+                });
                 break;
         }
 

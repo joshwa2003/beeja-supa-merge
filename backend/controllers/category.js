@@ -44,6 +44,14 @@ exports.deleteCategory = async (req, res) => {
             });
         }
 
+        // Check if category is already deleted
+        if (category.isDeleted) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category is already deleted'
+            });
+        }
+
         // Check if category has courses
         if (category.courses && category.courses.length > 0) {
             return res.status(400).json({
@@ -52,13 +60,39 @@ exports.deleteCategory = async (req, res) => {
             });
         }
 
-        // Delete category
-        await Category.findByIdAndDelete(categoryId);
+        // Move category to recycle bin instead of permanent deletion
+        try {
+            // Create recycle bin entry
+            const RecycleBin = require('../models/recycleBin');
+            
+            const recycleBinItem = await RecycleBin.create({
+                itemType: 'Category',
+                originalId: categoryId,
+                originalData: category.toObject(),
+                deletedBy: req.user.id,
+                reason: 'Category deleted by admin'
+            });
 
-        res.status(200).json({
-            success: true,
-            message: 'Category deleted successfully'
-        });
+            // Soft delete the category
+            await Category.findByIdAndUpdate(categoryId, { isDeleted: true });
+
+            const populatedItem = await RecycleBin.findById(recycleBinItem._id)
+                .populate('deletedBy', 'firstName lastName email');
+
+            return res.status(200).json({
+                success: true,
+                message: 'Category moved to recycle bin successfully',
+                data: populatedItem
+            });
+        } catch (recycleBinError) {
+            console.error('Error moving category to recycle bin:', recycleBinError);
+            return res.status(500).json({
+                success: false,
+                message: 'Error moving category to recycle bin',
+                error: recycleBinError.message
+            });
+        }
+
     }
     catch (error) {
         console.log('Error while deleting Category');
@@ -181,8 +215,8 @@ exports.showAllCategories = async (req, res) => {
     try {
         console.log('Fetching all categories from database...');
         
-        // get all category from DB with courses populated
-        const allCategories = await Category.find({})
+        // get all category from DB with courses populated, excluding deleted categories
+        const allCategories = await Category.find({ isDeleted: { $ne: true } })
             .populate({
                 path: 'courses',
                 match: { status: 'Published', isVisible: true },
@@ -237,9 +271,12 @@ exports.getCategoryPageDetails = async (req, res) => {
             });
         }
 
-        // First get the category
+        // First get the category (excluding deleted categories)
         console.log('Fetching category with ID:', categoryId);
-        const selectedCategory = await Category.findById(categoryId).lean();
+        const selectedCategory = await Category.findOne({ 
+            _id: categoryId, 
+            isDeleted: { $ne: true } 
+        }).lean();
 
         if (!selectedCategory) {
             console.log('ERROR: Category not found for ID:', categoryId);
@@ -321,6 +358,7 @@ exports.getCategoryPageDetails = async (req, res) => {
 
         const categoriesExceptSelected = await Category.find({
             _id: { $ne: categoryId },
+            isDeleted: { $ne: true }
         }).lean()
 
         // Get a different category with error handling
@@ -383,8 +421,8 @@ exports.getCategoryPageDetails = async (req, res) => {
             };
         }
 
-        // Get all categories
-        const allCategories = await Category.find().lean();
+        // Get all categories (excluding deleted ones)
+        const allCategories = await Category.find({ isDeleted: { $ne: true } }).lean();
 
         // Get all published and visible courses
         const allCourses = await Course.find({

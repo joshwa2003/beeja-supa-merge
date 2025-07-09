@@ -1,6 +1,6 @@
 import { toast } from "react-hot-toast"
 import { apiConnector } from "../apiConnector"
-import { adminEndpoints } from "../apis"
+import { adminEndpoints, courseEndpoints } from "../apis"
 
 const {
   GET_ALL_USERS_API,
@@ -23,6 +23,10 @@ const {
   BULK_UPDATE_REVIEW_SELECTION_API,
   DELETE_REVIEW_API,
 } = adminEndpoints
+
+const {
+  DELETE_CATEGORY_API,
+} = courseEndpoints
 
 
 // ================ Get All Users ================
@@ -870,6 +874,51 @@ export const deleteReview = async (reviewId, token) => {
       status: error.response?.status
     })
     const errorMessage = error.response?.data?.message || error.message || "Failed to delete review"
+    toast.error(errorMessage)
+    throw error
+  } finally {
+    toast.dismiss(toastId)
+  }
+  
+  return result
+}
+
+// ================ Delete Category ================
+export const deleteCategory = async (categoryId, token) => {
+  const toastId = toast.loading("Deleting category...")
+  let result = false
+
+  try {
+    if (!token) {
+      throw new Error("No authentication token found")
+    }
+
+    if (!categoryId) {
+      throw new Error("Category ID is required")
+    }
+
+    const response = await apiConnector("DELETE", DELETE_CATEGORY_API, {
+      categoryId: categoryId
+    }, {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    })
+    
+    console.log("DELETE_CATEGORY_API RESPONSE............", response)
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Delete Category")
+    }
+
+    toast.success("Category moved to recycle bin successfully")
+    result = true
+  } catch (error) {
+    console.error("DELETE_CATEGORY_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    const errorMessage = error.response?.data?.message || error.message || "Failed to delete category"
     toast.error(errorMessage)
     throw error
   } finally {
