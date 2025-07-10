@@ -1,8 +1,9 @@
 import { toast } from "react-hot-toast";
 import { apiConnector } from "../apiConnector";
-import { adminEndpoints } from "../apis";
+import { adminEndpoints, couponEndpoints } from "../apis";
 
-const { GET_ALL_COUPONS_API, GET_FRONTEND_COUPONS_API, CREATE_COUPON_API, VALIDATE_COUPON_API, APPLY_COUPON_API, VALIDATE_AND_APPLY_COUPON_API, TOGGLE_COUPON_STATUS_API } = adminEndpoints;
+const { GET_ALL_COUPONS_API, CREATE_COUPON_API, TOGGLE_COUPON_STATUS_API } = adminEndpoints;
+const { GET_FRONTEND_COUPONS_API, VALIDATE_AND_APPLY_COUPON_API, VALIDATE_COUPON_API, APPLY_COUPON_API } = couponEndpoints;
 
 export function createCoupon(data, token) {
   return async (dispatch) => {

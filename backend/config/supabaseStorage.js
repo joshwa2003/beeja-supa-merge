@@ -20,14 +20,28 @@ const FILE_SIZE_LIMITS = {
 
 // Chunked upload configuration for Supabase free tier (50MB limit per file)
 const CHUNKED_UPLOAD_CONFIG = {
+    CHUNK_THRESHOLD: 50 * 1024 * 1024, // 50MB - files larger than this will be chunked
     MAX_DIRECT_UPLOAD: 50 * 1024 * 1024, // 50MB max for direct upload (Supabase free tier)
-    SUPABASE_FREE_LIMIT: 50 * 1024 * 1024 // 50MB Supabase free tier limit
+    SUPABASE_FREE_LIMIT: 50 * 1024 * 1024, // 50MB Supabase free tier limit
+    CHUNK_SIZE: 25 * 1024 * 1024, // 25MB chunks for optimal upload
+    MAX_RETRIES: 3, // Maximum retry attempts for failed chunks
+    RETRY_DELAY_BASE: 1000 // Base delay for exponential backoff (ms)
 };
 
 // Allowed file types
 const ALLOWED_FILE_TYPES = {
     IMAGES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-    VIDEOS: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
+    VIDEOS: [
+        'video/mp4', 
+        'video/mpeg', 
+        'video/quicktime', 
+        'video/x-msvideo', 
+        'video/webm',
+        'video/x-matroska', // .mkv files
+        'video/x-flv',      // .flv files
+        'video/x-ms-wmv',   // .wmv files
+        'application/octet-stream' // Sometimes .mkv files are detected as this
+    ],
     DOCUMENTS: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 };
 
@@ -165,12 +179,22 @@ const getFileSizeLimit = (bucketName) => {
 /**
  * Get the appropriate bucket for a file type
  */
-const getBucketForFileType = (mimetype, folder = '') => {
-    console.log('🗂️ Determining bucket for:', { mimetype, folder });
+const getBucketForFileType = (mimetype, folder = '', originalname = '') => {
+    console.log('🗂️ Determining bucket for:', { mimetype, folder, originalname });
     
-    // Check if it's a video
-    if (ALLOWED_FILE_TYPES.VIDEOS && ALLOWED_FILE_TYPES.VIDEOS.includes(mimetype)) {
-        console.log('📹 Using VIDEOS bucket');
+    // Enhanced video detection - check both mimetype and file extension
+    const isVideoByMimetype = ALLOWED_FILE_TYPES.VIDEOS && ALLOWED_FILE_TYPES.VIDEOS.includes(mimetype);
+    const isVideoByExtension = originalname && /\.(mp4|mov|avi|wmv|mkv|flv|webm)$/i.test(originalname);
+    const isMkvFile = originalname && /\.mkv$/i.test(originalname);
+    const isOctetStreamMkv = mimetype === 'application/octet-stream' && isMkvFile;
+    
+    // Check if it's a video (by mimetype, extension, or special MKV case)
+    if (isVideoByMimetype || isVideoByExtension || isOctetStreamMkv) {
+        console.log('📹 Using VIDEOS bucket (detected by:', {
+            mimetype: isVideoByMimetype,
+            extension: isVideoByExtension,
+            mkvSpecial: isOctetStreamMkv
+        }, ')');
         return STORAGE_BUCKETS.VIDEOS;
     }
     
@@ -209,9 +233,29 @@ const getBucketForFileType = (mimetype, folder = '') => {
 const validateFile = (file, bucket) => {
     const errors = [];
     
+    // Enhanced video detection - check both mimetype and file extension
+    const isVideoByMimetype = file.mimetype.startsWith('video/');
+    const isVideoByExtension = file.originalname && /\.(mp4|mov|avi|wmv|mkv|flv|webm)$/i.test(file.originalname);
+    const isVideo = isVideoByMimetype || isVideoByExtension;
+    
+    // Special handling for .mkv files that might be detected as application/octet-stream
+    const isMkvFile = file.originalname && /\.mkv$/i.test(file.originalname);
+    const isOctetStreamMkv = file.mimetype === 'application/octet-stream' && isMkvFile;
+    
+    console.log('File validation details:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        isVideoByMimetype,
+        isVideoByExtension,
+        isVideo,
+        isMkvFile,
+        isOctetStreamMkv,
+        bucket
+    });
+    
     // Check file size - for videos, we allow larger sizes with chunked upload
     const sizeLimit = getFileSizeLimit(bucket);
-    const isVideo = file.mimetype.startsWith('video/');
     
     // For videos larger than chunk threshold, we'll use chunked upload
     if (!isVideo && file.size > sizeLimit) {
@@ -220,16 +264,25 @@ const validateFile = (file, bucket) => {
         errors.push(`Video file size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit (${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`);
     }
     
-    // Check file type
+    // Check file type with enhanced logic
     const allowedTypes = getAllowedMimeTypes(bucket);
-    if (!allowedTypes.includes(file.mimetype)) {
-        errors.push(`File type ${file.mimetype} is not allowed. Allowed types: ${allowedTypes.join(', ')}`);
+    const isTypeAllowed = allowedTypes.includes(file.mimetype) || isOctetStreamMkv;
+    
+    if (!isTypeAllowed) {
+        // If it's a video file by extension but not recognized by mimetype, provide helpful error
+        if (isVideoByExtension && !isVideoByMimetype) {
+            errors.push(`Video file type not properly detected. File extension suggests video but mimetype is ${file.mimetype}. Please ensure the file is a valid video format.`);
+        } else {
+            errors.push(`File type ${file.mimetype} is not allowed. Allowed types: ${allowedTypes.join(', ')}`);
+        }
     }
     
     return {
         isValid: errors.length === 0,
         errors,
-        willUseChunkedUpload: isVideo && file.size > CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD
+        willUseChunkedUpload: isVideo && file.size > CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD,
+        isVideo,
+        detectedAsVideo: isVideo
     };
 };
 
@@ -237,7 +290,13 @@ const validateFile = (file, bucket) => {
  * Check if file should use chunked upload
  */
 const shouldUseChunkedUpload = (file) => {
-    const isVideo = file.mimetype.startsWith('video/');
+    // Enhanced video detection - check both mimetype and file extension
+    const isVideoByMimetype = file.mimetype.startsWith('video/');
+    const isVideoByExtension = file.originalname && /\.(mp4|mov|avi|wmv|mkv|flv|webm)$/i.test(file.originalname);
+    const isMkvFile = file.originalname && /\.mkv$/i.test(file.originalname);
+    const isOctetStreamMkv = file.mimetype === 'application/octet-stream' && isMkvFile;
+    const isVideo = isVideoByMimetype || isVideoByExtension || isOctetStreamMkv;
+    
     return isVideo && file.size > CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD;
 };
 

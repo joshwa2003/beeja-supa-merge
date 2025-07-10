@@ -6,6 +6,27 @@ const { uploadFileToSupabase } = require('../utils/supabaseUploader');
 const { createNewContentNotification } = require('./notification');
 const { handleNewContentAddition } = require('../utils/certificateRegeneration');
 
+// Helper function to get error suggestions
+const getSuggestionForError = (statusCode, fileSize) => {
+    switch (statusCode) {
+        case 413:
+            return 'Please compress your video or split it into smaller parts.';
+        case 408:
+            return 'Upload timed out. Try with a smaller file or check your internet connection.';
+        case 400:
+            return 'Please check the video format and ensure it\'s a valid video file.';
+        case 503:
+            return 'Service temporarily unavailable. Please try again later.';
+        case 507:
+            return 'Server storage full. Please try with a smaller file or contact support.';
+        default:
+            if (fileSize > 1024 * 1024 * 1024) { // > 1GB
+                return 'Large file detected. Please ensure stable internet connection and try again.';
+            }
+            return 'Please try uploading again or contact support if the issue persists.';
+    }
+};
+
 // ================ Update SubSection ================
 exports.updateSubSection = async (req, res) => {
     try {
@@ -46,9 +67,16 @@ exports.updateSubSection = async (req, res) => {
                 console.log('Video file size:', (video.size / (1024 * 1024)).toFixed(2) + 'MB');
 
                 // Set a timeout for the entire upload process (extended for large files)
+                // Increased timeout for very large files (up to 2 hours)
+                const fileSize = video.size;
+                const isLargeFile = fileSize > 500 * 1024 * 1024; // 500MB
+                const timeoutDuration = isLargeFile ? 7200000 : 3600000; // 2 hours for large files, 1 hour for others
+                
+                console.log(`Setting upload timeout to ${timeoutDuration / 60000} minutes for file size: ${(fileSize / (1024 * 1024)).toFixed(2)}MB`);
+                
                 const uploadTimeout = setTimeout(() => {
-                    throw new Error('Upload timeout exceeded');
-                }, 1800000); // 30 minutes for large video uploads
+                    throw new Error('Upload timeout exceeded - file may be too large or connection too slow');
+                }, timeoutDuration);
 
                 try {
                     const uploadDetails = await uploadFileToSupabase(video, 'videos');
@@ -85,16 +113,16 @@ exports.updateSubSection = async (req, res) => {
                 let statusCode = 500;
                 
                 if (uploadError.message.includes('timeout')) {
-                    errorMessage = 'Video upload timed out. Large videos may take longer to process. Please try again.';
+                    errorMessage = 'Video upload timed out. Large videos may take longer to process. Please try again or use a smaller file.';
                     statusCode = 408;
                 } else if (uploadError.message.includes('chunk')) {
-                    errorMessage = 'Error during chunked upload. Please try again or use a smaller video file.';
+                    errorMessage = 'Error during chunked upload process. This may be due to network issues or server load. Please try again.';
                     statusCode = 500;
                 } else if (uploadError.message.includes('file size') || uploadError.message.includes('exceeds maximum limit')) {
                     errorMessage = 'Video file is too large. Maximum supported size is 2GB.';
                     statusCode = 413;
                 } else if (uploadError.message.includes('Invalid video file') || uploadError.message.includes('format')) {
-                    errorMessage = 'Invalid video format. Please use MP4, WebM, OGG, AVI, or MOV formats.';
+                    errorMessage = 'Invalid video format. Please use MP4, WebM, OGG, AVI, MKV, or MOV formats.';
                     statusCode = 400;
                 } else if (uploadError.message.includes('network') || uploadError.message.includes('connection')) {
                     errorMessage = 'Network error during upload. Please check your connection and try again.';
@@ -102,6 +130,12 @@ exports.updateSubSection = async (req, res) => {
                 } else if (uploadError.message.includes('validation failed')) {
                     errorMessage = uploadError.message;
                     statusCode = 400;
+                } else if (uploadError.message.includes('storage')) {
+                    errorMessage = 'Storage service error. Please try again later or contact support.';
+                    statusCode = 503;
+                } else if (uploadError.message.includes('memory') || uploadError.message.includes('heap')) {
+                    errorMessage = 'Server memory error processing large file. Please try a smaller file or contact support.';
+                    statusCode = 507;
                 }
                 
                 return res.status(statusCode).json({
@@ -112,8 +146,11 @@ exports.updateSubSection = async (req, res) => {
                         fileName: req.file ? req.file.originalname : 'unknown',
                         fileSize: req.file ? req.file.size : 0,
                         fileSizeMB: req.file ? (req.file.size / (1024 * 1024)).toFixed(2) + 'MB' : '0MB',
+                        mimeType: req.file ? req.file.mimetype : 'unknown',
                         errorType: uploadError.name,
-                        suggestion: statusCode === 413 ? 'Please compress your video or split it into smaller parts.' : 'Please try uploading again or contact support if the issue persists.'
+                        timestamp: new Date().toISOString(),
+                        suggestion: getSuggestionForError(statusCode, req.file ? req.file.size : 0),
+                        supportInfo: 'If this error persists, please contact support with the error details above.'
                     }
                 });
             }
@@ -230,21 +267,33 @@ exports.createSubSection = async (req, res) => {
                 });
                 
                 // Set a timeout for the entire upload process (extended for large files)
+                // Increased timeout for very large files (up to 2 hours)
+                const fileSize = videoFile.size;
+                const isLargeFile = fileSize > 500 * 1024 * 1024; // 500MB
+                const timeoutDuration = isLargeFile ? 7200000 : 3600000; // 2 hours for large files, 1 hour for others
+                
+                console.log(`Setting upload timeout to ${timeoutDuration / 60000} minutes for file size: ${(fileSize / (1024 * 1024)).toFixed(2)}MB`);
+                
                 const uploadTimeout = setTimeout(() => {
-                    throw new Error('Upload timeout exceeded');
-                }, 1800000); // 30 minutes for large video uploads
+                    throw new Error('Upload timeout exceeded - file may be too large or connection too slow');
+                }, timeoutDuration);
 
                 try {
                     // Upload video to Supabase (will automatically use chunked upload for large files)
+                    console.log('🚀 Starting video upload process...');
                     const videoFileDetails = await uploadFileToSupabase(videoFile, 'videos');
                     console.log('✅ Video uploaded to Supabase:', videoFileDetails.secure_url);
                     
                     // Clear the timeout as upload succeeded
                     clearTimeout(uploadTimeout);
 
-                    console.log('Video uploaded successfully:', videoFileDetails.secure_url);
-                    console.log('Video duration:', videoFileDetails.duration);
-                    console.log('Upload method:', videoFileDetails.size > 25 * 1024 * 1024 ? 'Chunked Upload' : 'Direct Upload');
+                    console.log('Video upload completed successfully:', {
+                        url: videoFileDetails.secure_url,
+                        duration: videoFileDetails.duration,
+                        size: videoFileDetails.size,
+                        isChunked: videoFileDetails.isChunked || false,
+                        uploadMethod: videoFileDetails.size > 50 * 1024 * 1024 ? 'Chunked Upload' : 'Direct Upload'
+                    });
                     
                     videoUrl = videoFileDetails.secure_url;
                     // Duration in seconds
@@ -255,10 +304,22 @@ exports.createSubSection = async (req, res) => {
                     // Validate that duration was set
                     if (timeDuration === 0) {
                         console.warn('⚠️ Video duration is 0 - this may cause course duration calculation issues');
+                        console.warn('This could be due to video processing or metadata extraction issues');
                     }
                 } catch (uploadError) {
                     // Clear the timeout as upload failed
                     clearTimeout(uploadTimeout);
+                    
+                    // Enhanced error logging for debugging
+                    console.error('❌ Video upload failed with detailed error:', {
+                        message: uploadError.message,
+                        stack: uploadError.stack,
+                        fileName: videoFile.originalname,
+                        fileSize: videoFile.size,
+                        fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + 'MB',
+                        mimeType: videoFile.mimetype
+                    });
+                    
                     throw uploadError;
                 }
             } catch (uploadError) {
@@ -269,16 +330,16 @@ exports.createSubSection = async (req, res) => {
                 let statusCode = 500;
                 
                 if (uploadError.message.includes('timeout')) {
-                    errorMessage = 'Video upload timed out. Large videos may take longer to process. Please try again.';
+                    errorMessage = 'Video upload timed out. Large videos may take longer to process. Please try again or use a smaller file.';
                     statusCode = 408;
                 } else if (uploadError.message.includes('chunk')) {
-                    errorMessage = 'Error during chunked upload. Please try again or use a smaller video file.';
+                    errorMessage = 'Error during chunked upload process. This may be due to network issues or server load. Please try again.';
                     statusCode = 500;
                 } else if (uploadError.message.includes('file size') || uploadError.message.includes('exceeds maximum limit')) {
                     errorMessage = 'Video file is too large. Maximum supported size is 2GB.';
                     statusCode = 413;
                 } else if (uploadError.message.includes('Invalid video file') || uploadError.message.includes('format')) {
-                    errorMessage = 'Invalid video format. Please use MP4, WebM, OGG, AVI, or MOV formats.';
+                    errorMessage = 'Invalid video format. Please use MP4, WebM, OGG, AVI, MKV, or MOV formats.';
                     statusCode = 400;
                 } else if (uploadError.message.includes('network') || uploadError.message.includes('connection')) {
                     errorMessage = 'Network error during upload. Please check your connection and try again.';
@@ -286,6 +347,12 @@ exports.createSubSection = async (req, res) => {
                 } else if (uploadError.message.includes('validation failed')) {
                     errorMessage = uploadError.message;
                     statusCode = 400;
+                } else if (uploadError.message.includes('storage')) {
+                    errorMessage = 'Storage service error. Please try again later or contact support.';
+                    statusCode = 503;
+                } else if (uploadError.message.includes('memory') || uploadError.message.includes('heap')) {
+                    errorMessage = 'Server memory error processing large file. Please try a smaller file or contact support.';
+                    statusCode = 507;
                 }
                 
                 return res.status(statusCode).json({
@@ -296,8 +363,11 @@ exports.createSubSection = async (req, res) => {
                         fileName: videoFile.originalname,
                         fileSize: videoFile.size,
                         fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + 'MB',
+                        mimeType: videoFile.mimetype,
                         errorType: uploadError.name,
-                        suggestion: statusCode === 413 ? 'Please compress your video or split it into smaller parts.' : 'Please try uploading again or contact support if the issue persists.'
+                        timestamp: new Date().toISOString(),
+                        suggestion: getSuggestionForError(statusCode, videoFile.size),
+                        supportInfo: 'If this error persists, please contact support with the error details above.'
                     }
                 });
             }

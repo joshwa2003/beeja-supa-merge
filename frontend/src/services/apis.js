@@ -256,3 +256,14 @@ export const jobsEndpoints = {
   GET_APPLICATIONS_BY_EMAIL_API: BASE_URL + "/api/v1/job-applications/email/:email",
   DOWNLOAD_RESUME_API: BASE_URL + "/api/v1/job-applications/download/:applicationId",
 }
+
+// COUPON ENDPOINTS (User accessible)
+export const couponEndpoints = {
+  // User accessible coupon endpoints
+  GET_FRONTEND_COUPONS_API: BASE_URL + "/api/v1/auth/coupons/frontend",
+  VALIDATE_AND_APPLY_COUPON_API: BASE_URL + "/api/v1/auth/coupons/validate-and-apply",
+  
+  // Legacy endpoints (for backward compatibility)
+  VALIDATE_COUPON_API: BASE_URL + "/api/v1/auth/coupons/validate-and-apply",
+  APPLY_COUPON_API: BASE_URL + "/api/v1/auth/coupons/validate-and-apply",
+}

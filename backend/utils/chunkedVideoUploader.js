@@ -1,13 +1,14 @@
 const { supabaseAdmin } = require('../config/supabaseAdmin');
-const { getBucketForFileType } = require('../config/supabaseStorage');
+const { getBucketForFileType, CHUNKED_UPLOAD_CONFIG } = require('../config/supabaseStorage');
 const { extractVideoMetadata } = require('./videoMetadata');
 const ChunkedVideo = require('../models/chunkedVideo');
 const path = require('path');
 const crypto = require('crypto');
 
-// Configuration
-const CHUNK_SIZE = 25 * 1024 * 1024; // 25MB chunks
-const MAX_RETRIES = 3;
+// Configuration - use centralized config
+const CHUNK_SIZE = CHUNKED_UPLOAD_CONFIG.CHUNK_SIZE;
+const MAX_RETRIES = CHUNKED_UPLOAD_CONFIG.MAX_RETRIES;
+const RETRY_DELAY_BASE = CHUNKED_UPLOAD_CONFIG.RETRY_DELAY_BASE;
 
 /**
  * Generate a unique video ID for chunked upload
@@ -28,7 +29,14 @@ const initializeChunkedUpload = async (file, folder = 'videos') => {
             throw new Error('Invalid file buffer');
         }
 
-        if (!file.mimetype.startsWith('video/')) {
+        // Enhanced video detection - check both mimetype and file extension
+        const isVideoByMimetype = file.mimetype.startsWith('video/');
+        const isVideoByExtension = file.originalname && /\.(mp4|mov|avi|wmv|mkv|flv|webm)$/i.test(file.originalname);
+        const isMkvFile = file.originalname && /\.mkv$/i.test(file.originalname);
+        const isOctetStreamMkv = file.mimetype === 'application/octet-stream' && isMkvFile;
+        const isVideo = isVideoByMimetype || isVideoByExtension || isOctetStreamMkv;
+
+        if (!isVideo) {
             throw new Error('File must be a video');
         }
 
@@ -108,19 +116,27 @@ const uploadChunk = async (videoId, chunkIndex, chunkBuffer) => {
         let uploadSuccess = false;
         let chunkPath = '';
 
-        // Retry upload with exponential backoff
+        // Retry upload with exponential backoff and better error handling
         while (uploadAttempts < MAX_RETRIES && !uploadSuccess) {
             try {
                 uploadAttempts++;
-                console.log(`Upload attempt ${uploadAttempts} for chunk ${chunkIndex}`);
+                console.log(`Upload attempt ${uploadAttempts}/${MAX_RETRIES} for chunk ${chunkIndex}`);
 
-                const { data, error } = await supabaseAdmin.storage
+                // Add timeout for individual chunk uploads
+                const uploadPromise = supabaseAdmin.storage
                     .from(chunkedVideo.bucket)
                     .upload(chunkFilename, chunkBuffer, {
                         contentType: 'application/octet-stream',
                         cacheControl: '3600',
                         upsert: false
                     });
+
+                // Set timeout for chunk upload (5 minutes per chunk)
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Chunk upload timeout')), 5 * 60 * 1000);
+                });
+
+                const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
 
                 if (error) {
                     console.error(`Supabase storage error for chunk ${chunkIndex}:`, error);
@@ -143,17 +159,30 @@ const uploadChunk = async (videoId, chunkIndex, chunkBuffer) => {
                     chunkIndex,
                     chunkSize: chunkBuffer.length,
                     bucket: chunkedVideo.bucket,
-                    filename: chunkFilename
+                    filename: chunkFilename,
+                    attempt: uploadAttempts,
+                    maxRetries: MAX_RETRIES
                 });
                 
                 if (uploadAttempts < MAX_RETRIES) {
-                    // Exponential backoff: wait 2^attempt seconds
-                    const waitTime = Math.pow(2, uploadAttempts) * 1000;
-                    console.log(`Retrying in ${waitTime}ms...`);
+                    // Exponential backoff with jitter to avoid thundering herd
+                    const baseDelay = RETRY_DELAY_BASE * Math.pow(2, uploadAttempts - 1);
+                    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+                    const waitTime = baseDelay + jitter;
+                    
+                    console.log(`Retrying chunk ${chunkIndex} in ${Math.round(waitTime)}ms...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 } else {
                     // Final attempt failed, provide detailed error
-                    throw new Error(`Failed to upload chunk ${chunkIndex} after ${MAX_RETRIES} attempts. Last error: ${uploadError.message}`);
+                    const errorDetails = {
+                        chunkIndex,
+                        totalAttempts: uploadAttempts,
+                        lastError: uploadError.message,
+                        chunkSize: chunkBuffer.length,
+                        bucket: chunkedVideo.bucket
+                    };
+                    
+                    throw new Error(`Failed to upload chunk ${chunkIndex} after ${MAX_RETRIES} attempts. Details: ${JSON.stringify(errorDetails)}`);
                 }
             }
         }
@@ -378,26 +407,45 @@ const uploadVideoInChunks = async (file, folder = 'videos') => {
         const initResult = await initializeChunkedUpload(file, folder);
         const { videoId, totalChunks } = initResult;
 
-        // Split file into chunks and upload sequentially to avoid issues
+        // Split file into chunks and upload sequentially to avoid memory issues
         const fileBuffer = file.buffer;
         const chunkResults = [];
 
         console.log(`Uploading ${totalChunks} chunks sequentially...`);
+        console.log(`Total file size: ${(fileBuffer.length / (1024 * 1024)).toFixed(2)}MB`);
+        console.log(`Chunk size: ${(CHUNK_SIZE / (1024 * 1024)).toFixed(2)}MB`);
         
         for (let i = 0; i < totalChunks; i++) {
             const start = i * CHUNK_SIZE;
             const end = Math.min(start + CHUNK_SIZE, fileBuffer.length);
             const chunkBuffer = fileBuffer.slice(start, end);
 
-            console.log(`Uploading chunk ${i + 1}/${totalChunks} (${chunkBuffer.length} bytes)`);
+            console.log(`Uploading chunk ${i + 1}/${totalChunks} (${(chunkBuffer.length / (1024 * 1024)).toFixed(2)}MB)`);
             
             try {
                 const chunkResult = await uploadChunk(videoId, i, chunkBuffer);
                 chunkResults.push(chunkResult);
-                console.log(`✅ Chunk ${i + 1}/${totalChunks} uploaded successfully`);
+                
+                // Log progress
+                const progressPercent = ((i + 1) / totalChunks * 100).toFixed(1);
+                console.log(`✅ Chunk ${i + 1}/${totalChunks} uploaded successfully (${progressPercent}% complete)`);
+                
+                // Small delay between chunks to prevent overwhelming the server
+                if (i < totalChunks - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
             } catch (chunkError) {
                 console.error(`❌ Failed to upload chunk ${i + 1}/${totalChunks}:`, chunkError);
-                throw new Error(`Failed to upload chunk ${i + 1}: ${chunkError.message}`);
+                
+                // Try to cleanup uploaded chunks on failure
+                try {
+                    console.log('🧹 Attempting to cleanup uploaded chunks due to failure...');
+                    await cleanupChunks(videoId, true);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup chunks:', cleanupError);
+                }
+                
+                throw new Error(`Failed to upload chunk ${i + 1}/${totalChunks}: ${chunkError.message}`);
             }
         }
 

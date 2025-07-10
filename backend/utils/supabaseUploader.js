@@ -1,6 +1,6 @@
 const { supabaseAdmin } = require('../config/supabaseAdmin');
 const sharp = require('sharp');
-const { getBucketForFileType, validateFile } = require('../config/supabaseStorage');
+const { getBucketForFileType, validateFile, CHUNKED_UPLOAD_CONFIG } = require('../config/supabaseStorage');
 const { uploadVideoInChunks } = require('./chunkedVideoUploader');
 const { extractVideoMetadata } = require('./videoMetadata');
 const path = require('path');
@@ -15,10 +15,13 @@ const IMAGE_CONFIG = {
     maxFileSize: 10 * 1024 * 1024 // 10MB
 };
 
-// Video chunking configuration for Supabase free tier
+// Video chunking configuration for Supabase free tier - use centralized config
 const VIDEO_CONFIG = {
-    chunkThreshold: 50 * 1024 * 1024, // 50MB - files larger than this will be chunked (Supabase free tier limit)
-    maxDirectUploadSize: 50 * 1024 * 1024 // 50MB - maximum size for direct upload (Supabase free tier limit)
+    chunkThreshold: CHUNKED_UPLOAD_CONFIG.CHUNK_THRESHOLD,
+    maxDirectUploadSize: CHUNKED_UPLOAD_CONFIG.MAX_DIRECT_UPLOAD,
+    chunkSize: CHUNKED_UPLOAD_CONFIG.CHUNK_SIZE,
+    maxRetries: CHUNKED_UPLOAD_CONFIG.MAX_RETRIES,
+    retryDelayBase: CHUNKED_UPLOAD_CONFIG.RETRY_DELAY_BASE
 };
 
 /**
@@ -125,27 +128,66 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
         }
 
         // Determine the appropriate bucket
-        const bucket = getBucketForFileType(file.mimetype, folder);
+        const bucket = getBucketForFileType(file.mimetype, folder, file.originalname);
         console.log(`📁 Using bucket: ${bucket}`);
 
-        // Check if it's a video and if it needs chunked upload
-        const isVideo = file.mimetype.startsWith('video/');
+        // Enhanced video detection - check both mimetype and file extension
+        const isVideoByMimetype = file.mimetype.startsWith('video/');
+        const isVideoByExtension = file.originalname && /\.(mp4|mov|avi|wmv|mkv|flv|webm)$/i.test(file.originalname);
+        const isMkvFile = file.originalname && /\.mkv$/i.test(file.originalname);
+        const isOctetStreamMkv = file.mimetype === 'application/octet-stream' && isMkvFile;
+        const isVideo = isVideoByMimetype || isVideoByExtension || isOctetStreamMkv;
+        
+        console.log('Video detection in uploader:', {
+            isVideoByMimetype,
+            isVideoByExtension,
+            isOctetStreamMkv,
+            isVideo,
+            mimetype: file.mimetype,
+            originalname: file.originalname
+        });
+        
         const isLargeVideo = isVideo && file.size > VIDEO_CONFIG.chunkThreshold;
 
         if (isLargeVideo) {
             console.log('🎬 Large video detected, using chunked upload...');
-            
-            // Use chunked upload for large videos
-            const result = await uploadVideoInChunks(file, folder);
-            
-            console.log('✅ Chunked video upload successful:', {
-                secure_url: result.secure_url,
-                public_id: result.public_id,
-                bucket: result.bucket,
-                size: result.size
+            console.log('Video details:', {
+                size: file.size,
+                sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + 'MB',
+                threshold: VIDEO_CONFIG.chunkThreshold,
+                thresholdInMB: (VIDEO_CONFIG.chunkThreshold / (1024 * 1024)).toFixed(2) + 'MB'
             });
+            
+            try {
+                // Use chunked upload for large videos with enhanced error handling
+                const result = await uploadVideoInChunks(file, folder);
+                
+                console.log('✅ Chunked video upload successful:', {
+                    secure_url: result.secure_url,
+                    public_id: result.public_id,
+                    bucket: result.bucket,
+                    size: result.size,
+                    duration: result.duration
+                });
 
-            return result;
+                return result;
+            } catch (chunkedError) {
+                console.error('❌ Chunked upload failed:', chunkedError);
+                
+                // Provide more specific error messages for chunked upload failures
+                let errorMessage = 'Chunked video upload failed';
+                if (chunkedError.message.includes('timeout')) {
+                    errorMessage = 'Video upload timed out. Please try again with a smaller file or check your internet connection.';
+                } else if (chunkedError.message.includes('chunk')) {
+                    errorMessage = 'Error during chunked upload process. Please try again or contact support.';
+                } else if (chunkedError.message.includes('storage')) {
+                    errorMessage = 'Storage service error. Please try again later.';
+                } else if (chunkedError.message.includes('network')) {
+                    errorMessage = 'Network error during upload. Please check your connection and try again.';
+                }
+                
+                throw new Error(`${errorMessage}: ${chunkedError.message}`);
+            }
         }
 
         // For non-videos or small videos, use regular upload
@@ -199,7 +241,7 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
             secure_url: urlData.publicUrl,
             public_id: filename,
             format: path.extname(file.originalname).substring(1),
-            resource_type: isImage ? 'image' : file.mimetype.startsWith('video/') ? 'video' : 'raw',
+            resource_type: isImage ? 'image' : isVideo ? 'video' : 'raw',
             bucket: bucket,
             path: data.path,
             fullPath: data.fullPath,
@@ -208,7 +250,7 @@ const uploadFileToSupabase = async (file, folder = '', options = {}) => {
         };
 
         // Extract video duration for video files
-        if (file.mimetype.startsWith('video/')) {
+        if (isVideo) {
             try {
                 console.log('🎬 Extracting video duration...');
                 const videoMetadata = await extractVideoMetadata(file.buffer, {

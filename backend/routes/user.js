@@ -16,9 +16,15 @@ const {
     verifyResetToken,
 } = require('../controllers/resetPassword');
 
+// Coupon controllers
+const {
+    validateAndApplyCoupon,
+    getFrontendCoupons
+} = require('../controllers/coupon');
 
 // Middleware
 const { auth } = require('../middleware/auth');
+const { couponValidationLimiter } = require('../middleware/rateLimiter');
 
 
 // Routes for Login, Signup, and Authentication
@@ -48,7 +54,15 @@ router.get('/verify-token', auth, (req, res) => {
   });
 });
 
+// ********************************************************************************************************
+//                                      Coupon Routes (User accessible)
+// ********************************************************************************************************
 
+// Route for validating and applying coupons (requires authentication)
+router.post('/coupons/validate-and-apply', auth, couponValidationLimiter, validateAndApplyCoupon);
+
+// Route for getting frontend coupons (public endpoint)
+router.get('/coupons/frontend', getFrontendCoupons);
 
 // ********************************************************************************************************
 //                                      Reset Password

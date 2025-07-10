@@ -37,6 +37,12 @@ export default function CouponInput({ totalAmount, onCouponApply, checkoutType =
       return;
     }
 
+    // Check if user is authenticated
+    if (!token) {
+      toast.error('Please login to apply coupons');
+      return;
+    }
+
     setLoading(true);
     setPricePreview(null);
     
@@ -69,8 +75,10 @@ export default function CouponInput({ totalAmount, onCouponApply, checkoutType =
         setPricePreview(null);
       }
     } catch (error) {
-      // Handle rate limiting specifically
-      if (error.message && error.message.includes('Too many coupon attempts')) {
+      // Handle authentication errors specifically
+      if (error.message && error.message.includes('Token is Missing')) {
+        toast.error('Please login to apply coupons');
+      } else if (error.message && error.message.includes('Too many coupon attempts')) {
         toast.error('Too many attempts. Please wait before trying again.');
       } else if (error.message && error.message.includes('not applicable for this checkout type')) {
         toast.error('This coupon cannot be used for this type of purchase.');

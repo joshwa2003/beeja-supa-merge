@@ -89,14 +89,7 @@ export default function AdminSubSectionModal({
       return
     }
 
-    // Validate file size if video is provided (100MB limit)
-    if (data.lectureVideo && data.lectureVideo instanceof File) {
-      const maxSize = 100 * 1024 * 1024 // 100MB in bytes
-      if (data.lectureVideo.size > maxSize) {
-        toast.error("Video file size must be less than 100MB")
-        return
-      }
-    }
+    // File size validation removed - unlimited video upload size allowed
 
     // For new lectures, only update local state (don't save to database)
     const newSubSection = {
