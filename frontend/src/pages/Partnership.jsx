@@ -9,12 +9,12 @@ import cisco from "../assets/Images/certification img/cisco.png";
 import scb from "../assets/Images/certification img/CSB-Logo.png";
 import esb from "../assets/Images/certification img/ESB.png";
 import ic3 from "../assets/Images/certification img/IC3.png";
-import intuit from "../assets/Images/certification img/intuit.png";
-import its from "../assets/Images/certification img/ITS-Logo-stacked.png";
+import intuit from "../assets/Images/certification img/Intuit.png";
+import its from "../assets/Images/certification img/ITS-Logo-Stacked.png";
 import meta from "../assets/Images/certification img/meta-logo.webp";
 import Microsoft from "../assets/Images/certification img/microsoft.webp";
-import Project from "../assets/Images/certification img/project.png";
-import Unity from "../assets/Images/certification img/unity-logo.png";
+import Project from "../assets/Images/certification img/Project.png";
+import Unity from "../assets/Images/certification img/Unity-logo.png";
 
 const partnerLogos = [
   { src: adobe, alt: "Adobe", name: "Adobe" },
