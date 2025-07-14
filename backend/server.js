@@ -13,7 +13,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
 // connection to DB and Supabase
-const { connectDB } = require('./config/database');
+const { connectDB, isConnected, getConnectionStatus } = require('./config/database');
 const { initializeStorageBuckets } = require('./config/supabaseStorage');
 
 // routes
@@ -212,6 +212,26 @@ app.use((req, res, next) => {
     next();
 });
 
+// Database connection health check middleware
+app.use('/api', (req, res, next) => {
+    if (!isConnected()) {
+        const status = getConnectionStatus();
+        console.error('❌ Database not connected for API request:', {
+            method: req.method,
+            url: req.url,
+            connectionStatus: status
+        });
+        
+        return res.status(503).json({
+            success: false,
+            message: 'Database connection unavailable. Please try again later.',
+            error: 'SERVICE_UNAVAILABLE',
+            connectionStatus: status.state
+        });
+    }
+    next();
+});
+
 // Log all incoming requests (after body parsing)
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
@@ -252,11 +272,71 @@ app.use('/api/v1/chunked-upload', chunkedUploadRoutes);
 // Video Playback Routes
 app.use('/api/v1/video', videoPlaybackRoutes);
 
+// Health check route
+app.get('/health', (req, res) => {
+    const dbStatus = getConnectionStatus();
+    const isDbConnected = isConnected();
+    
+    res.status(isDbConnected ? 200 : 503).json({
+        status: isDbConnected ? 'healthy' : 'unhealthy',
+        timestamp: new Date().toISOString(),
+        database: {
+            connected: isDbConnected,
+            ...dbStatus
+        },
+        server: {
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            version: process.version
+        }
+    });
+});
+
+// Database monitoring route
+app.get('/api/v1/admin/db-monitor', (req, res) => {
+    try {
+        const report = connectionMonitor.getDetailedReport();
+        res.status(200).json({
+            success: true,
+            data: report
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error getting database monitoring report',
+            error: error.message
+        });
+    }
+});
+
+// Database connection test route
+app.get('/api/v1/admin/db-test', async (req, res) => {
+    try {
+        const testResult = await connectionMonitor.testConnection();
+        res.status(testResult.success ? 200 : 503).json({
+            success: testResult.success,
+            data: testResult
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error testing database connection',
+            error: error.message
+        });
+    }
+});
+
 // Default Route
 app.get('/', (req, res) => {
+    const dbStatus = getConnectionStatus();
+    const isDbConnected = isConnected();
+    
     res.send(`<div>
-        This is Default Route  
-        <p>Everything is OK</p>
+        <h2>LMS Backend Server</h2>
+        <p>✅ Server is running</p>
+        <p>Database Status: ${isDbConnected ? '✅ Connected' : '❌ Disconnected'} (${dbStatus.state})</p>
+        <p>Uptime: ${Math.floor(process.uptime())} seconds</p>
+        <p><a href="/health">Health Check</a></p>
     </div>`);
 });
 
@@ -335,16 +415,54 @@ app.use((err, req, res, next) => {
     }
 });
 
-// connections
-connectDB();
-initializeStorageBuckets();
+// Import seed function and connection monitor
+const { seedDatabase } = require('./utils/seedData');
+const { connectionMonitor } = require('./utils/connectionMonitor');
 
-// Initialize recycle bin cleanup scheduler
-const { scheduleCleanup } = require('./scripts/recycleBinCleanup');
-scheduleCleanup();
+// Startup function to handle initialization
+const startServer = async () => {
+    try {
+        // Connect to database
+        await connectDB();
+        
+        // Initialize storage buckets
+        await initializeStorageBuckets();
+        
+        // Run seed data if SEED_DATABASE environment variable is set to true
+        if (process.env.SEED_DATABASE === 'true') {
+            console.log('🌱 SEED_DATABASE is enabled, running database seeding...');
+            try {
+                const seedResult = await seedDatabase();
+                console.log('✅ Seeding completed:', seedResult.message);
+            } catch (seedError) {
+                console.error('❌ Seeding failed:', seedError.message);
+                console.log('⚠️  Server will continue without seeding...');
+            }
+        } else {
+            console.log('ℹ️  Database seeding skipped (SEED_DATABASE not set to true)');
+        }
+        
+        // Initialize recycle bin cleanup scheduler
+        const { scheduleCleanup } = require('./scripts/recycleBinCleanup');
+        scheduleCleanup();
 
-const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
-    console.log(`Server Started on PORT ${PORT}`);
-    console.log(`Socket.IO server is running on http://localhost:${PORT}`);
-});
+        // Start connection monitoring
+        connectionMonitor.startMonitoring(30000); // Check every 30 seconds
+
+        // Start the server
+        const PORT = process.env.PORT || 5001;
+        server.listen(PORT, () => {
+            console.log(`🚀 Server Started on PORT ${PORT}`);
+            console.log(`🔌 Socket.IO server is running on http://localhost:${PORT}`);
+            console.log('🔍 Database connection monitoring started');
+            console.log('✅ Server initialization completed successfully!');
+        });
+        
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// Start the server
+startServer();

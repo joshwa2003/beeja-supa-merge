@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
 const Category = require('../models/category');
 const Course = require('../models/course');
 const User = require('../models/user');
 const Profile = require('../models/profile');
+const mongoose = require('mongoose');
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -543,33 +543,54 @@ const coursesData = [
 
 const seedDatabase = async () => {
     try {
+        console.log("🌱 Starting database seeding...");
+        
         // Connect to MongoDB
         await mongoose.connect(MONGO_URI);
-        console.log("Connected to MongoDB");
+        console.log("✅ Connected to MongoDB for seeding");
 
-        // Clear existing data
+        // Check if data already exists
+        const existingCategories = await Category.countDocuments();
+        const existingCourses = await Course.countDocuments();
+        const existingUsers = await User.countDocuments();
+
+        if (existingCategories > 0 || existingCourses > 0 || existingUsers > 0) {
+            console.log("📊 Existing data found:");
+            console.log(`   - Categories: ${existingCategories}`);
+            console.log(`   - Courses: ${existingCourses}`);
+            console.log(`   - Users: ${existingUsers}`);
+            console.log("⚠️  Skipping seeding to preserve existing data");
+            await mongoose.connection.close();
+            return { success: true, message: "Seeding skipped - data already exists" };
+        }
+
+        console.log("🗑️  Clearing existing data...");
         await Category.deleteMany({});
         await Course.deleteMany({});
         await User.deleteMany({});
         await Profile.deleteMany({});
-        console.log("Cleared existing data");
+        console.log("✅ Cleared existing data");
 
         // Create instructor profile
+        console.log("👤 Creating instructor profile...");
         const instructorProfile = await Profile.create(instructorProfileData);
-        console.log("Created instructor profile");
+        console.log("✅ Created instructor profile");
 
         // Create instructor with profile reference
+        console.log("👨‍🏫 Creating instructor user...");
         const instructor = await User.create({
             ...instructorData,
             additionalDetails: instructorProfile._id
         });
-        console.log("Created instructor:", instructor);
+        console.log("✅ Created instructor user");
 
         // Insert categories
+        console.log("📚 Creating categories...");
         const createdCategories = await Category.insertMany(categories);
-        console.log("Added categories:", createdCategories);
+        console.log(`✅ Added ${createdCategories.length} categories`);
 
         // Create courses with references
+        console.log("🎓 Creating courses...");
         const courses = coursesData.map((course, index) => ({
             ...course,
             instructor: instructor._id,
@@ -580,9 +601,10 @@ const seedDatabase = async () => {
         }));
 
         const createdCourses = await Course.insertMany(courses);
-        console.log("Added courses:", createdCourses);
+        console.log(`✅ Added ${createdCourses.length} courses`);
 
         // Update instructor with course references
+        console.log("🔗 Updating references...");
         await User.findByIdAndUpdate(
             instructor._id,
             { $push: { courses: { $each: createdCourses.map(course => course._id) } } }
@@ -595,17 +617,44 @@ const seedDatabase = async () => {
                 { $push: { courses: course._id } }
             );
         }
-        console.log("Updated references");
+        console.log("✅ Updated all references");
 
         // Close connection
         await mongoose.connection.close();
-        console.log("Database connection closed");
+        console.log("🔌 Database connection closed");
+        console.log("🎉 Database seeding completed successfully!");
+
+        return { 
+            success: true, 
+            message: "Database seeded successfully",
+            data: {
+                categories: createdCategories.length,
+                courses: createdCourses.length,
+                users: 1
+            }
+        };
 
     } catch (error) {
-        console.error("Error seeding database:", error);
-        process.exit(1);
+        console.error("❌ Error seeding database:", error);
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close();
+        }
+        throw error;
     }
 };
 
-// Run the seed function
-seedDatabase();
+// Export the seed function for use in other files
+module.exports = { seedDatabase };
+
+// Run the seed function only if this file is executed directly
+if (require.main === module) {
+    seedDatabase()
+        .then((result) => {
+            console.log("Seeding result:", result);
+            process.exit(0);
+        })
+        .catch((error) => {
+            console.error("Seeding failed:", error);
+            process.exit(1);
+        });
+}

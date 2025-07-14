@@ -57,4 +57,4 @@ EXPOSE 5001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5001/', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-CMD ["npm", "run", "dev"]
+CMD ["npm","start"]
